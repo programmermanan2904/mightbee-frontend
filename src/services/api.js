@@ -1,66 +1,134 @@
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-// ── Token helpers ─────────────────────────────────────────────────────────────
+console.log("🚀 API BASE URL:", BASE_URL);
+
+// ── Token helpers ─────────────────────────────────────────
 
 function getAccountToken() {
-  return localStorage.getItem("mb_token");
+  const token = localStorage.getItem("mb_token");
+  console.log("🔑 Account Token:", token);
+  return token;
 }
 
 function getProfileToken() {
-  return localStorage.getItem("mb_profile_token");
+  const token = localStorage.getItem("mb_profile_token");
+  console.log("👤 Profile Token:", token);
+  return token;
 }
 
-// ── Base request — account-level (Bearer token) ───────────────────────────────
+// ── Base request (Account-level) ──────────────────────────
 
 async function request(path, options = {}) {
-  const token = getAccountToken();
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
+  try {
+    console.log("📡 REQUEST START:", path);
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-  const data = await res.json();
+    const token = getAccountToken();
 
-  if (!res.ok) throw new Error(data.message || data.error || "Something went wrong");
-  return data;
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const url = `${BASE_URL}${path}`;
+
+    console.log("🌍 URL:", url);
+    console.log("📦 Headers:", headers);
+    console.log("📤 Body:", options.body);
+
+    const res = await fetch(url, { ...options, headers });
+
+    console.log("📥 Status:", res.status);
+
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+
+    console.log("📥 Response:", data);
+
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Something went wrong");
+    }
+
+    return data;
+
+  } catch (error) {
+    console.error("🔥 REQUEST ERROR:", error);
+    throw error;
+  }
 }
 
-// ── Profile-level request (Profile token) ────────────────────────────────────
-// Used for all chat/message calls — history is isolated per profile
+// ── Profile request (Profile-level token) ─────────────────
 
 async function profileRequest(path, options = {}) {
-  const token = getProfileToken();
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Profile ${token}` } : {}),
-    ...options.headers,
-  };
+  try {
+    console.log("📡 PROFILE REQUEST:", path);
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-  const data = await res.json();
+    const token = getProfileToken();
 
-  if (!res.ok) throw new Error(data.message || data.error || "Something went wrong");
-  return data;
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Profile ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const url = `${BASE_URL}${path}`;
+
+    console.log("🌍 Profile URL:", url);
+    console.log("📦 Profile Headers:", headers);
+
+    const res = await fetch(url, { ...options, headers });
+
+    console.log("📥 Profile Status:", res.status);
+
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+
+    console.log("📥 Profile Response:", data);
+
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Something went wrong");
+    }
+
+    return data;
+
+  } catch (error) {
+    console.error("🔥 PROFILE REQUEST ERROR:", error);
+    throw error;
+  }
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────
 
 export const auth = {
-  login: (email, password) =>
-    request("/auth/login", {
+  login: (email, password) => {
+    console.log("🔐 LOGIN:", email);
+
+    return request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
-    }),
+    });
+  },
 
-  register: (name, email, password, profession) =>
-    request("/auth/register", {
+  register: (name, email, password, profession) => {
+    console.log("📝 REGISTER:", { name, email, profession });
+
+    return request("/auth/register", {
       method: "POST",
       body: JSON.stringify({ name, email, password, profession }),
-    }),
+    });
+  },
 
   logout: () => {
+    console.log("🚪 LOGOUT");
+
     localStorage.removeItem("mb_token");
     localStorage.removeItem("mb_user");
     localStorage.removeItem("mb_profile_token");
@@ -68,65 +136,91 @@ export const auth = {
   },
 
   saveSession: (token, user) => {
+    console.log("💾 Save Session:", user);
+
     localStorage.setItem("mb_token", token);
     localStorage.setItem("mb_user", JSON.stringify(user));
   },
 
   getUser: () => {
-    try { return JSON.parse(localStorage.getItem("mb_user")); }
-    catch { return null; }
+    try {
+      const user = JSON.parse(localStorage.getItem("mb_user"));
+      console.log("👤 Current User:", user);
+      return user;
+    } catch {
+      return null;
+    }
   },
 
-  isLoggedIn: () => Boolean(getAccountToken()),
+  isLoggedIn: () => {
+    const loggedIn = Boolean(getAccountToken());
+    console.log("🔎 Is Logged In:", loggedIn);
+    return loggedIn;
+  },
 };
 
-// ── Profiles ──────────────────────────────────────────────────────────────────
+// ── Profiles ──────────────────────────────────────────────
 
 export const profiles = {
-  // Fetch all profiles for the logged-in account
-  getAll: () => request("/profiles"),
+  getAll: () => {
+    console.log("📂 Get Profiles");
+    return request("/profiles");
+  },
 
-  // Create a new profile (max 6)
-  create: (name, avatar, profession) =>
-    request("/profiles", {
+  create: (name, avatar, profession) => {
+    console.log("➕ Create Profile:", name);
+
+    return request("/profiles", {
       method: "POST",
       body: JSON.stringify({ name, avatar, profession }),
-    }),
+    });
+  },
 
-  // Update a profile's name, avatar, or profession
-  update: (profileId, updates) =>
-    request(`/profiles/${profileId}`, {
+  update: (profileId, updates) => {
+    console.log("✏ Update Profile:", profileId);
+
+    return request(`/profiles/${profileId}`, {
       method: "PATCH",
       body: JSON.stringify(updates),
-    }),
+    });
+  },
 
-  // Delete a profile + all its chat history
-  delete: (profileId) =>
-    request(`/profiles/${profileId}`, { method: "DELETE" }),
+  delete: (profileId) => {
+    console.log("🗑 Delete Profile:", profileId);
 
-  // Select a profile — returns profileToken, stores it locally
+    return request(`/profiles/${profileId}`, {
+      method: "DELETE",
+    });
+  },
+
   select: async (profileId) => {
-    const data = await request(`/profiles/${profileId}/select`, { method: "POST" });
+    console.log("🎯 Select Profile:", profileId);
+
+    const data = await request(`/profiles/${profileId}/select`, {
+      method: "POST",
+    });
+
     localStorage.setItem("mb_profile_token", data.profileToken);
     localStorage.setItem("mb_active_profile", JSON.stringify(data.profile));
+
     return data;
   },
 
-  // Get currently active profile from localStorage
   getActive: () => {
-    try { return JSON.parse(localStorage.getItem("mb_active_profile")); }
-    catch { return null; }
+    try {
+      return JSON.parse(localStorage.getItem("mb_active_profile"));
+    } catch {
+      return null;
+    }
   },
 
-  // Clear active profile (e.g. on logout or profile delete)
   clearActive: () => {
     localStorage.removeItem("mb_profile_token");
     localStorage.removeItem("mb_active_profile");
   },
 };
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
-// All chat calls use profileRequest (Profile token) so history is per-profile
+// ── Chat ──────────────────────────────────────────────────
 
 export const chat = {
   create: (tone) =>
@@ -155,7 +249,7 @@ export const chat = {
     }),
 };
 
-// ── User (account-level settings) ────────────────────────────────────────────
+// ── User ──────────────────────────────────────────────────
 
 export const user = {
   getProfile: () => request("/user/me"),

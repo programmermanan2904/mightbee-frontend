@@ -112,6 +112,7 @@ export default function Login() {
     try {
       if (isSignup) {
         const data = await auth.register(username.trim(), email.trim(), password, profession);
+        console.log("Request for signup :", data);
         auth.saveSession(data.token, data.user);
         showSuccess("Welcome to the hive! 🐝");
         setTimeout(() => navigate("/dashboard"), 800);
