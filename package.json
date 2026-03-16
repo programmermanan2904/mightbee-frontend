@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "vite preview --host 0.0.0.0 --port $PORT",
-    "preview": "vite preview --host 0.0.0.0 --port $PORT",
+    "start": "serve -s dist -l $PORT",
+    "preview": "vite preview",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -21,7 +21,8 @@
     "react-router-dom": "^7.13.1",
     "react-tsparticles": "^2.12.2",
     "tailwind-merge": "^3.5.0",
-    "tsparticles": "^3.9.1"
+    "tsparticles": "^3.9.1",
+    "serve": "^14.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
