@@ -74,197 +74,6 @@ function HexInput({ label, type = "text", value, onChange, placeholder }) {
   );
 }
 
-// ── Netflix-style Profile Picker ──────────────────────────────────────────────
-function ProfilePicker({ profiles, onSelect, selecting }) {
-  const { isMobile } = useBreakpoint();
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
-      style={{
-        position: "fixed", inset: 0, zIndex: 200,
-        background: "#080D1A",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        fontFamily: "Syne, sans-serif",
-        overflow: "hidden",
-      }}
-    >
-      <InteractiveHive />
-
-      {/* Background orbs */}
-      <div style={{ position: "fixed", left: "-10%", top: "10%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(244,180,0,0.06) 0%, transparent 70%)", filter: "blur(80px)", pointerEvents: "none" }} />
-      <div style={{ position: "fixed", right: "0%", bottom: "5%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,213,79,0.05) 0%, transparent 70%)", filter: "blur(90px)", pointerEvents: "none" }} />
-      <div style={{ position: "fixed", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(244,180,0,0.01) 2px, rgba(244,180,0,0.01) 4px)", pointerEvents: "none" }} />
-
-      <div style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "0 1.5rem", maxWidth: 900, width: "100%" }}>
-
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          style={{ marginBottom: isMobile ? "2.5rem" : "3.5rem" }}
-        >
-          <motion.div
-            animate={{ rotate: [0, 5, 0, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
-            style={{ display: "inline-block", marginBottom: 16 }}
-          >
-            <div style={{
-              width: isMobile ? 44 : 54, height: (isMobile ? 44 : 54) * 1.1547,
-              clipPath: HEX, background: "linear-gradient(135deg,#F4B400,#FFD54F)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: isMobile ? "1.1rem" : "1.3rem",
-              boxShadow: "0 0 30px rgba(244,180,0,0.5)",
-              margin: "0 auto",
-            }}>🐝</div>
-          </motion.div>
-          <h1 style={{
-            fontFamily: "Orbitron, sans-serif", fontWeight: 900,
-            fontSize: isMobile ? "1.2rem" : "1.8rem",
-            color: "#F4B400", letterSpacing: "0.12em",
-            textShadow: "0 0 40px rgba(244,180,0,0.35)",
-            margin: "0 0 10px",
-          }}>WHO'S BUZZING?</h1>
-          <p style={{
-            fontFamily: "Syne, sans-serif", fontSize: isMobile ? "0.8rem" : "0.92rem",
-            color: "rgba(232,217,160,0.4)", letterSpacing: "0.04em",
-          }}>Select your hive identity to continue</p>
-        </motion.div>
-
-        {/* Profile grid */}
-        <div style={{
-          display: "flex", flexWrap: "wrap",
-          justifyContent: "center",
-          gap: isMobile ? "1.5rem 1.2rem" : "2rem 2.5rem",
-          marginBottom: "3rem",
-        }}>
-          {profiles.map((profile, i) => (
-            <ProfilePickerCard
-              key={profile._id}
-              profile={profile}
-              index={i}
-              onSelect={onSelect}
-              selecting={selecting}
-              isMobile={isMobile}
-            />
-          ))}
-        </div>
-
-        {/* Footer hint */}
-        <motion.p
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-          style={{
-            fontFamily: "Syne, sans-serif", fontSize: "0.75rem",
-            color: "rgba(232,217,160,0.2)", letterSpacing: "0.04em",
-          }}
-        >
-          Manage profiles in settings
-        </motion.p>
-      </div>
-    </motion.div>
-  );
-}
-
-function ProfilePickerCard({ profile, index, onSelect, selecting, isMobile }) {
-  const [hovered, setHovered] = useState(false);
-  const isSelecting = selecting === profile._id;
-  const size = isMobile ? 80 : 110;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30, scale: 0.85 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.5, delay: 0.15 + index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, cursor: selecting ? "wait" : "pointer" }}
-      onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-      onClick={() => !selecting && onSelect(profile._id)}
-    >
-      {/* Big hex avatar */}
-      <motion.div
-        animate={{
-          scale: hovered ? 1.1 : 1,
-          boxShadow: hovered
-            ? "0 0 40px rgba(244,180,0,0.6), 0 0 80px rgba(244,180,0,0.2)"
-            : "0 0 0px rgba(244,180,0,0)",
-        }}
-        transition={{ duration: 0.25 }}
-        style={{
-          width: size, height: size * 1.1547,
-          clipPath: HEX,
-          background: hovered
-            ? "linear-gradient(135deg, rgba(244,180,0,0.28), rgba(255,213,79,0.18))"
-            : "rgba(13,21,37,0.9)",
-          border: `2px solid ${hovered ? "#F4B400" : "rgba(244,180,0,0.2)"}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: isMobile ? "2rem" : "2.8rem",
-          position: "relative",
-          transition: "border-color 0.25s, background 0.25s",
-        }}
-      >
-        {isSelecting ? (
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-            style={{
-              width: isMobile ? 22 : 28, height: isMobile ? 22 : 28,
-              border: "2px solid rgba(244,180,0,0.25)",
-              borderTopColor: "#F4B400", borderRadius: "50%",
-            }}
-          />
-        ) : (
-          profile.avatar
-        )}
-
-        {/* Hover glow overlay */}
-        <AnimatePresence>
-          {hovered && !isSelecting && (
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{
-                position: "absolute", inset: 0, clipPath: HEX,
-                background: "rgba(244,180,0,0.08)",
-              }}
-            />
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* Name */}
-      <motion.span
-        animate={{ color: hovered ? "#F4B400" : "rgba(232,217,160,0.65)" }}
-        transition={{ duration: 0.2 }}
-        style={{
-          fontFamily: "Orbitron, sans-serif",
-          fontSize: isMobile ? "0.62rem" : "0.72rem",
-          letterSpacing: "0.1em", textTransform: "uppercase",
-          maxWidth: isMobile ? 80 : 120,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          textAlign: "center",
-        }}
-      >{profile.name}</motion.span>
-
-      {/* Profession badge */}
-      {profile.profession && (
-        <motion.span
-          animate={{ opacity: hovered ? 0.8 : 0.35 }}
-          style={{
-            fontFamily: "Syne, sans-serif", fontSize: "0.62rem",
-            color: "rgba(244,180,0,0.6)", letterSpacing: "0.04em",
-            marginTop: -8,
-          }}
-        >{profile.profession}</motion.span>
-      )}
-    </motion.div>
-  );
-}
-
-// ── Main Login Page ───────────────────────────────────────────────────────────
 export default function Login() {
   const navigate = useNavigate();
   const { isMobile } = useBreakpoint();
@@ -275,27 +84,30 @@ export default function Login() {
   const [loginEmail, setLoginEmail]       = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  // Signup fields — all on one page
-  const [username, setUsername]           = useState("");
-  const [email, setEmail]                 = useState("");
-  const [password, setPassword]           = useState("");
-  const [profession, setProfession]       = useState(null);
-  const [displayName, setDisplayName]     = useState("");
-  const [selectedAvatar, setSelectedAvatar] = useState("🐝");
+  // Signup fields
+  const [username, setUsername]               = useState("");
+  const [email, setEmail]                     = useState("");
+  const [password, setPassword]               = useState("");
+  const [profession, setProfession]           = useState(null);
+  const [displayName, setDisplayName]         = useState("");
+  const [selectedAvatar, setSelectedAvatar]   = useState("🐝");
 
-  const [loading, setLoading]   = useState(false);
-  const [msg, setMsg]           = useState("");
-  const [msgType, setMsgType]   = useState("error");
-
-  // Profile picker state (shown after login)
-  const [showPicker, setShowPicker]     = useState(false);
-  const [pickerProfiles, setPickerProfiles] = useState([]);
-  const [selecting, setSelecting]       = useState(null); // profileId being selected
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg]         = useState("");
+  const [msgType, setMsgType] = useState("error");
 
   const isSignup = mode === "signup";
 
+  // ── Only redirect if already logged in AND has an active profile ──────────
   useEffect(() => {
-    if (auth.isLoggedIn()) navigate("/dashboard");
+    if (auth.isLoggedIn()) {
+      const active = profilesApi.getActive();
+      if (active) {
+        navigate("/dashboard");
+      } else {
+        navigate("/pick-profile");
+      }
+    }
   }, [navigate]);
 
   const showError   = (text) => { setMsgType("error");   setMsg(text); };
@@ -303,39 +115,28 @@ export default function Login() {
 
   // ── Login ──────────────────────────────────────────────────────────────────
   const handleLogin = async () => {
-  if (!loginEmail.trim() || !loginPassword) {
-    showError("Fill all fields, worker bee. 🐝"); return;
-  }
-  setLoading(true); setMsg("");
-  try {
-    const data = await auth.login(loginEmail.trim(), loginPassword);
-    auth.saveSession(data.token, data.user);
-
-    // fetch + cache profiles, then go to picker
-    const profilesData = await profilesApi.getAll();
-    const list = profilesData.profiles || [];
-    profilesApi.setCached(list);
-
-    showSuccess("Access granted. Entering hive...");
-    setTimeout(() => navigate("/pick-profile"), 600);
-  } catch (err) {
-    showError(err.message || "Something went wrong. Try again.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // ── Profile picker selection ───────────────────────────────────────────────
-  const handlePickProfile = async (profileId) => {
-    setSelecting(profileId);
+    if (!loginEmail.trim() || !loginPassword) {
+      showError("Fill all fields, worker bee. 🐝"); return;
+    }
+    setLoading(true); setMsg("");
     try {
-      const data = await profilesApi.select(profileId);
-      profilesApi.setCached(pickerProfiles);
-      // Small delay for satisfying animation
-      setTimeout(() => navigate("/dashboard"), 400);
+      const data = await auth.login(loginEmail.trim(), loginPassword);
+      auth.saveSession(data.token, data.user);
+
+      // Clear any stale active profile from previous session
+      profilesApi.clearActive();
+
+      // Fetch and cache profiles
+      const profilesData = await profilesApi.getAll();
+      const list = profilesData.profiles || [];
+      profilesApi.setCached(list);
+
+      showSuccess("Access granted. Entering hive...");
+      setTimeout(() => navigate("/pick-profile"), 600);
     } catch (err) {
-      showError(err.message || "Failed to switch profile.");
-      setSelecting(null);
+      showError(err.message || "Something went wrong. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -349,11 +150,9 @@ export default function Login() {
 
     setLoading(true); setMsg("");
     try {
-      // 1. Register account
       const data = await auth.register(username.trim(), email.trim(), password, profession);
       auth.saveSession(data.token, data.user);
 
-      // 2. Create primary profile
       const profileData = await profilesApi.create(
         displayName.trim() || username.trim(),
         selectedAvatar,
@@ -361,7 +160,6 @@ export default function Login() {
       );
       const newProfile = profileData.profile;
 
-      // 3. Auto-select it
       const selected = await profilesApi.select(newProfile._id);
       profilesApi.setCached([selected.profile]);
 
@@ -379,27 +177,14 @@ export default function Login() {
     else handleLogin();
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{
       minHeight: "100vh", background: "#080D1A",
       display: "flex", alignItems: "flex-start", justifyContent: "center",
       position: "relative", overflow: "hidden", fontFamily: "Syne, sans-serif",
     }}>
-      {/* Netflix profile picker overlay */}
-      <AnimatePresence>
-        {showPicker && (
-          <ProfilePicker
-            profiles={pickerProfiles}
-            onSelect={handlePickProfile}
-            selecting={selecting}
-          />
-        )}
-      </AnimatePresence>
-
       <InteractiveHive />
 
-      {/* Background orbs */}
       <div style={{ position: "fixed", left: "-8%", top: "15%", width: isMobile ? 240 : 480, height: isMobile ? 240 : 480, borderRadius: "50%", background: "radial-gradient(circle, rgba(244,180,0,0.07) 0%, transparent 70%)", filter: "blur(70px)", pointerEvents: "none", zIndex: 0 }} />
       <div style={{ position: "fixed", right: "5%", bottom: "10%", width: isMobile ? 180 : 360, height: isMobile ? 180 : 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,213,79,0.05) 0%, transparent 70%)", filter: "blur(90px)", pointerEvents: "none", zIndex: 0 }} />
 
@@ -497,11 +282,11 @@ export default function Login() {
             </motion.div>
           )}
 
-          {/* ── SIGNUP FORM — all on one page ── */}
+          {/* ── SIGNUP FORM ── */}
           {isSignup && (
             <motion.div key="signup-form" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.28 }}>
 
-              {/* Section: Account */}
+              {/* Section 1: Credentials */}
               <div style={{ marginBottom: "1.6rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
                   <div style={{ width: 18, height: 18 * 1.1547, clipPath: HEX, background: "rgba(244,180,0,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.55rem", flexShrink: 0 }}>1</div>
@@ -513,7 +298,7 @@ export default function Login() {
                 <HexInput label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••••" />
               </div>
 
-              {/* Section: Profession */}
+              {/* Section 2: Profession */}
               <div style={{ marginBottom: "1.6rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
                   <div style={{ width: 18, height: 18 * 1.1547, clipPath: HEX, background: "rgba(244,180,0,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.55rem", flexShrink: 0 }}>2</div>
@@ -536,7 +321,7 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Section: Identity */}
+              {/* Section 3: Identity */}
               <div style={{ marginBottom: "0.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
                   <div style={{ width: 18, height: 18 * 1.1547, clipPath: HEX, background: "rgba(244,180,0,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.55rem", flexShrink: 0 }}>3</div>
