@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import InteractiveHive from "../components/ui/InteractiveHive";
 import { auth, chat, profiles as profilesApi } from "../services/api";
 
 const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
@@ -711,8 +710,6 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#080D1A", overflow: "hidden", position: "relative", fontFamily: "Syne, sans-serif" }}>
-      <InteractiveHive glowColor={ct.accent} />
-
       <motion.div key={`orb1-${tone}`} animate={{ background: ct.orbColor1 }} transition={{ duration: 0.9, ease: "easeInOut" }}
         style={{ position: "fixed", left: "-5%", top: "20%", width: 400, height: 400, borderRadius: "50%", filter: "blur(80px)", pointerEvents: "none", zIndex: 0 }} />
       <motion.div key={`orb2-${tone}`} animate={{ background: ct.orbColor2 }} transition={{ duration: 0.9, ease: "easeInOut" }}
