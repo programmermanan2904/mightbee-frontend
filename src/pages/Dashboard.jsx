@@ -534,19 +534,29 @@ export default function Dashboard() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
-  const isWelcome = messages.length === 0;
 
+  // ── FIX: ref guard prevents navigate("/profile") from triggering
+  //         an infinite re-render loop in production ──────────────
+  const authChecked = useRef(false);
+
+  const isWelcome = messages.length === 0;
   const ct = TONES.find(t => t.id === tone) || TONES[0];
 
   // ── Auth guard + profile check ────────────────────────────────────────────
   useEffect(() => {
-    if (!auth.isLoggedIn()) { navigate("/login"); return; }
+    // Only run once — the missing guard was the root cause of the infinite loop
+    if (authChecked.current) return;
+    authChecked.current = true;
+
+    if (!auth.isLoggedIn()) {
+      navigate("/login");
+      return;
+    }
 
     const accountUser = auth.getUser();
     const activeProfile = profilesApi.getActive();
 
     if (activeProfile) {
-      // Profile selected — merge profile data into currentUser
       setCurrentUser({
         ...accountUser,
         username: activeProfile.name,
@@ -557,7 +567,6 @@ export default function Dashboard() {
       });
       if (activeProfile.preferredTone) setTone(activeProfile.preferredTone);
     } else {
-      // No profile yet — show account name as fallback and redirect to pick one
       setCurrentUser({
         ...accountUser,
         username: accountUser?.name || accountUser?.username || "Worker Bee",
@@ -566,6 +575,7 @@ export default function Dashboard() {
       navigate("/profile");
     }
   }, [navigate]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => { if (isMobile) setSidebar(false); }, [isMobile]);
 
@@ -776,18 +786,16 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* ── Sidebar Footer — shows active profile name + avatar ── */}
+            {/* ── Sidebar Footer ── */}
             <motion.div
               animate={{ borderTopColor: ct.accentBorder, background: ct.accentDim }}
               whileHover={{ background: ct.accentDim.replace("0.18", "0.28") }}
               transition={{ duration: 0.5 }}
               style={{ padding: "1rem", borderTop: "1px solid rgba(244,180,0,0.08)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-              {/* Avatar hex — shows profile emoji or fallback */}
               <div style={{ width: 30, height: 30 * 1.1547, clipPath: HEX, flexShrink: 0, background: "rgba(244,180,0,0.12)", border: "1px solid rgba(244,180,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem" }}>
                 {currentUser?.avatar || "👤"}
               </div>
               <div style={{ flex: 1, overflow: "hidden" }} onClick={() => navigate("/profile")}>
-                {/* Profile name — updates instantly when profile is switched */}
                 <p style={{ fontFamily: "Orbitron, sans-serif", fontSize: "0.68rem", color: "#E8D9A0", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {currentUser?.username || "Worker Bee"}
                 </p>
