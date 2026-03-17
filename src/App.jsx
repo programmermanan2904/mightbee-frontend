@@ -6,7 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile   from "./pages/Profile";
 
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("mb_token");
   return token ? children : <Navigate to="/login" replace />;
 };
 
