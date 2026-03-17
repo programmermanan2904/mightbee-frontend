@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import InteractiveHive from "../components/ui/InteractiveHive";
 import HexButton from "../components/ui/HexButton";
-import { auth } from "../services/api";
+import { auth, profiles as profilesApi } from "../services/api";
 
 const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
 
@@ -15,6 +15,8 @@ const PROFESSIONS = [
   { id: "creator",    label: "Creator",    emoji: "🎨" },
   { id: "business",   label: "Business",   emoji: "📊" },
 ];
+
+const AVATARS = ["🐝", "🦋", "🌸", "🔥", "⚡", "🌙", "🎯", "🚀", "🌿", "💎", "🎨", "🔬"];
 
 function useBreakpoint() {
   const [bp, setBp] = useState({ isMobile: false, isTablet: false });
@@ -84,6 +86,8 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [selectedAvatar, setSelectedAvatar] = useState("🐝");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("error");
@@ -98,21 +102,45 @@ export default function Login() {
   const showSuccess = (text) => { setMsgType("success"); setMsg(text); };
 
   const handleSubmit = async () => {
+    // Step 1 — credentials
     if (isSignup && step === 1) {
       if (!username.trim())    { showError("Username is required, worker bee. 🐝"); return; }
       if (!email.trim())       { showError("Email is required."); return; }
       if (password.length < 6) { showError("Password must be at least 6 characters."); return; }
       setMsg(""); setStep(2); return;
     }
-    if (isSignup && step === 2 && !profession) {
-      showError("Choose your profession so Livvy knows you."); return;
+    // Step 2 — profession
+    if (isSignup && step === 2) {
+      if (!profession) { showError("Choose your profession so Livvy knows you."); return; }
+      setMsg(""); setStep(3); return;
+    }
+    // Step 3 — identity (display name + avatar)
+    if (isSignup && step === 3) {
+      if (!displayName.trim()) { showError("Give your hive member a name."); return; }
     }
 
     setLoading(true); setMsg("");
     try {
       if (isSignup) {
+        // 1. Register account
         const data = await auth.register(username.trim(), email.trim(), password, profession);
         auth.saveSession(data.token, data.user);
+
+        // 2. Auto-create the primary profile
+        try {
+          const profileData = await profilesApi.create(
+            displayName.trim() || username.trim(),
+            selectedAvatar,
+            profession
+          );
+          const newProfile = profileData.profile;
+          // 3. Auto-select it so dashboard loads immediately
+          const selected = await profilesApi.select(newProfile._id);
+          profilesApi.setCached([selected.profile]);
+        } catch (profileErr) {
+          console.warn("Profile auto-create failed:", profileErr.message);
+        }
+
         showSuccess("Welcome to the hive! 🐝");
         setTimeout(() => navigate("/dashboard"), 800);
       } else {
@@ -139,15 +167,13 @@ export default function Login() {
 
       <div style={{
         position: "fixed", left: "-8%", top: "15%",
-        width: isMobile ? 240 : 480, height: isMobile ? 240 : 480,
-        borderRadius: "50%",
+        width: isMobile ? 240 : 480, height: isMobile ? 240 : 480, borderRadius: "50%",
         background: "radial-gradient(circle, rgba(244,180,0,0.07) 0%, transparent 70%)",
         filter: "blur(70px)", pointerEvents: "none", zIndex: 0,
       }} />
       <div style={{
         position: "fixed", right: "5%", bottom: "10%",
-        width: isMobile ? 180 : 360, height: isMobile ? 180 : 360,
-        borderRadius: "50%",
+        width: isMobile ? 180 : 360, height: isMobile ? 180 : 360, borderRadius: "50%",
         background: "radial-gradient(circle, rgba(255,213,79,0.05) 0%, transparent 70%)",
         filter: "blur(90px)", pointerEvents: "none", zIndex: 0,
       }} />
@@ -268,22 +294,30 @@ export default function Login() {
               letterSpacing: "0.14em", marginBottom: 8,
             }}>MIGHTBEE</motion.h1>
           <AnimatePresence mode="wait">
-            <motion.p key={isSignup ? (step === 1 ? "s1" : "s2") : "login"}
+            <motion.p key={isSignup ? `s${step}` : "login"}
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}
               style={{
                 fontFamily: "Syne, sans-serif", fontSize: "0.82rem",
                 color: "rgba(232,217,160,0.45)", letterSpacing: "0.04em",
               }}>
-              {isSignup ? (step === 1 ? "Create your hive account" : "Tell Livvy who you are") : "Access the hive"}
+              {isSignup
+                ? step === 1 ? "Create your hive account"
+                : step === 2 ? "Tell Livvy who you are"
+                : "Set up your hive identity"
+                : "Access the hive"}
             </motion.p>
           </AnimatePresence>
         </div>
 
-        {/* Step indicator */}
+        {/* Step indicator — 3 steps for signup */}
         {isSignup && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: "1.5rem" }}>
-            {[1, 2].map(s => (
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: "1.5rem" }}>
+            {[
+              { s: 1, label: "CREDENTIALS" },
+              { s: 2, label: "PROFESSION" },
+              { s: 3, label: "IDENTITY" },
+            ].map(({ s, label }) => (
               <motion.div key={s}
                 animate={{
                   background: step >= s ? "rgba(244,180,0,0.25)" : "rgba(244,180,0,0.05)",
@@ -291,11 +325,11 @@ export default function Login() {
                 }}
                 transition={{ duration: 0.35 }}
                 style={{
-                  padding: "0.3rem 1rem", border: "1px solid", borderRadius: 2,
-                  fontFamily: "Orbitron", fontSize: "0.52rem", letterSpacing: "0.18em",
+                  padding: "0.3rem 0.6rem", border: "1px solid", borderRadius: 2,
+                  fontFamily: "Orbitron", fontSize: "0.44rem", letterSpacing: "0.14em",
                   color: step >= s ? "#F4B400" : "rgba(244,180,0,0.3)",
                 }}>
-                {s === 1 ? "CREDENTIALS" : "PROFESSION"}
+                {label}
               </motion.div>
             ))}
           </div>
@@ -332,7 +366,7 @@ export default function Login() {
 
         {/* Form */}
         <AnimatePresence mode="wait">
-          {(!isSignup || step === 1) ? (
+          {(!isSignup || step === 1) && (
             <motion.div key="s1"
               initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
@@ -345,7 +379,9 @@ export default function Login() {
               <HexInput label="Password" type="password" value={password}
                 onChange={e => setPassword(e.target.value)} placeholder="••••••••••" />
             </motion.div>
-          ) : (
+          )}
+
+          {isSignup && step === 2 && (
             <motion.div key="s2"
               initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
@@ -390,6 +426,55 @@ export default function Login() {
               </div>
             </motion.div>
           )}
+
+          {isSignup && step === 3 && (
+            <motion.div key="s3"
+              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+              <p style={{
+                fontFamily: "Syne, sans-serif", fontSize: "0.85rem",
+                color: "rgba(232,217,160,0.55)", marginBottom: "1.4rem",
+                textAlign: "center", lineHeight: 1.6,
+              }}>
+                Your <span style={{ color: "#FFD54F" }}>hive identity</span> — how Livvy will know you:
+              </p>
+
+              <HexInput
+                label="Display Name"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder="e.g. Manan"
+              />
+
+              <div style={{ marginBottom: "1.5rem" }}>
+                <label style={{
+                  display: "block", fontFamily: "Orbitron, sans-serif",
+                  fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase",
+                  marginBottom: 10, color: "rgba(244,180,0,0.45)",
+                }}>Pick Your Avatar</label>
+                <div style={{
+                  display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8,
+                }}>
+                  {AVATARS.map(av => (
+                    <motion.button
+                      key={av}
+                      whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
+                      onClick={() => setSelectedAvatar(av)}
+                      style={{
+                        padding: "10px 4px",
+                        border: `1px solid ${selectedAvatar === av ? "#F4B400" : "rgba(244,180,0,0.15)"}`,
+                        borderRadius: 4,
+                        background: selectedAvatar === av ? "rgba(244,180,0,0.18)" : "rgba(8,13,26,0.6)",
+                        fontSize: "1.2rem", cursor: "pointer",
+                        boxShadow: selectedAvatar === av ? "0 0 12px rgba(244,180,0,0.25)" : "none",
+                        transition: "all 0.2s",
+                      }}
+                    >{av}</motion.button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Message */}
@@ -413,16 +498,22 @@ export default function Login() {
           <HexButton size={isMobile ? "sm" : "md"} onClick={handleSubmit} disabled={loading} variant="primary">
             {loading
               ? (isSignup ? "Creating hive..." : "Entering hive...")
-              : isSignup ? (step === 1 ? "Next →" : "🐝 Join Hive") : "Enter Hive"}
+              : isSignup
+                ? step === 1 ? "Next →"
+                : step === 2 ? "Next →"
+                : "🐝 Join Hive"
+              : "Enter Hive"}
           </HexButton>
         </div>
 
-        {isSignup && step === 2 && (
-          <p onClick={() => setStep(1)} style={{
-            textAlign: "center", marginTop: "1.2rem",
-            fontFamily: "Syne, sans-serif", fontSize: "0.78rem",
-            color: "rgba(244,180,0,0.45)", cursor: "pointer",
-          }}>← Back</p>
+        {/* Back button */}
+        {isSignup && step > 1 && (
+          <p onClick={() => { setStep(s => s - 1); setMsg(""); }}
+            style={{
+              textAlign: "center", marginTop: "1.2rem",
+              fontFamily: "Syne, sans-serif", fontSize: "0.78rem",
+              color: "rgba(244,180,0,0.45)", cursor: "pointer",
+            }}>← Back</p>
         )}
 
         <p style={{

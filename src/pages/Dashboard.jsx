@@ -511,6 +511,154 @@ function MessageTonePills({ activeToneId, seenTones, onSwitch, isRegenerating })
   );
 }
 
+function SidebarFooter({ currentUser, ct, navigate, handleLogout }) {
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const allProfiles = profilesApi.getCached?.() || [];
+
+  return (
+    <div style={{ position: "relative" }}>
+      <AnimatePresence>
+        {switchOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
+              background: "#0A1220", border: "1px solid rgba(244,180,0,0.3)",
+              borderRadius: 6, overflow: "hidden", zIndex: 999,
+              boxShadow: "0 -12px 40px rgba(0,0,0,0.9)",
+            }}
+          >
+            <p style={{
+              fontFamily: "Orbitron, sans-serif", fontSize: "0.45rem",
+              color: "rgba(244,180,0,0.4)", letterSpacing: "0.22em",
+              padding: "10px 14px 6px", margin: 0, textTransform: "uppercase",
+            }}>Switch User</p>
+            <div style={{ height: 1, background: "rgba(244,180,0,0.1)", margin: "0 10px 4px" }} />
+
+            {allProfiles.length === 0 ? (
+              <p style={{ fontFamily: "Syne, sans-serif", fontSize: "0.72rem", color: "rgba(232,217,160,0.25)", padding: "10px 14px", margin: 0 }}>
+                No profiles yet
+              </p>
+            ) : (
+              allProfiles.map((profile) => {
+                const isActive = profile._id === currentUser?.profileId;
+                return (
+                  <motion.div
+                    key={profile._id}
+                    whileHover={{ background: "rgba(244,180,0,0.09)" }}
+                    onClick={async () => {
+                      if (isActive) { setSwitchOpen(false); return; }
+                      try {
+                        await profilesApi.select(profile._id);
+                        window.location.reload();
+                      } catch (e) {
+                        console.error("Switch failed:", e.message);
+                      }
+                      setSwitchOpen(false);
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "9px 14px",
+                      cursor: isActive ? "default" : "pointer",
+                      background: isActive ? "rgba(244,180,0,0.07)" : "transparent",
+                      transition: "background 0.15s",
+                    }}
+                  >
+                    <div style={{
+                      width: 26, height: 26 * 1.1547, clipPath: HEX, flexShrink: 0,
+                      background: isActive ? "rgba(244,180,0,0.28)" : "rgba(244,180,0,0.08)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.75rem",
+                    }}>{profile.avatar || "👤"}</div>
+                    <div style={{ flex: 1, overflow: "hidden" }}>
+                      <p style={{
+                        fontFamily: "Orbitron, sans-serif", fontSize: "0.6rem",
+                        color: isActive ? "#F4B400" : "rgba(232,217,160,0.7)",
+                        margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      }}>{profile.name}</p>
+                      {profile.profession && (
+                        <p style={{ fontFamily: "Syne, sans-serif", fontSize: "0.54rem", color: "rgba(244,180,0,0.35)", margin: "1px 0 0" }}>
+                          {profile.profession}
+                        </p>
+                      )}
+                    </div>
+                    {isActive && <span style={{ fontSize: "0.55rem", color: "#F4B400" }}>●</span>}
+                  </motion.div>
+                );
+              })
+            )}
+
+            <div style={{ height: 1, background: "rgba(244,180,0,0.1)", margin: "4px 10px 0" }} />
+            <motion.div
+              whileHover={{ background: "rgba(244,180,0,0.07)" }}
+              onClick={() => { setSwitchOpen(false); navigate("/profile"); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 14px", cursor: "pointer", transition: "background 0.15s",
+              }}
+            >
+              <span style={{ fontSize: "0.72rem" }}>⚙️</span>
+              <span style={{ fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem", color: "rgba(244,180,0,0.5)", letterSpacing: "0.1em" }}>
+                Manage Profile
+              </span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Footer row */}
+      <motion.div
+        animate={{ borderTopColor: ct.accentBorder, background: ct.accentDim }}
+        transition={{ duration: 0.5 }}
+        style={{ padding: "1rem", borderTop: "1px solid rgba(244,180,0,0.08)", display: "flex", alignItems: "center", gap: 10 }}
+      >
+        {/* Avatar — opens switch dropdown */}
+        <motion.div
+          whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
+          onClick={() => setSwitchOpen(v => !v)}
+          title="Switch User"
+          style={{
+            width: 30, height: 30 * 1.1547, clipPath: HEX, flexShrink: 0,
+            background: switchOpen ? "rgba(244,180,0,0.25)" : "rgba(244,180,0,0.12)",
+            border: `1px solid ${switchOpen ? "rgba(244,180,0,0.7)" : "rgba(244,180,0,0.35)"}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "0.85rem", cursor: "pointer",
+            boxShadow: switchOpen ? "0 0 14px rgba(244,180,0,0.3)" : "none",
+            transition: "all 0.2s",
+          }}
+        >
+          {currentUser?.avatar || "👤"}
+        </motion.div>
+
+        {/* Name — click goes to profile page */}
+        <div style={{ flex: 1, overflow: "hidden", cursor: "pointer" }} onClick={() => navigate("/profile")}>
+          <p style={{ fontFamily: "Orbitron, sans-serif", fontSize: "0.68rem", color: "#E8D9A0", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {currentUser?.username || "Worker Bee"}
+          </p>
+          <p style={{ fontFamily: "Syne, sans-serif", fontSize: "0.62rem", color: "rgba(244,180,0,0.4)", margin: "2px 0 0" }}>
+            {currentUser?.profession ? `${currentUser.profession} • ` : ""}Pro
+          </p>
+        </div>
+
+        {/* Chevron */}
+        <motion.span
+          animate={{ rotate: switchOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={() => setSwitchOpen(v => !v)}
+          style={{ color: "rgba(244,180,0,0.35)", fontSize: "0.6rem", cursor: "pointer", padding: "4px", lineHeight: 1 }}
+        >▲</motion.span>
+
+        {/* Logout */}
+        <motion.span whileHover={{ color: "#FFD54F" }} onClick={handleLogout} title="Logout"
+          style={{ color: "rgba(244,180,0,0.35)", fontSize: "0.75rem", cursor: "pointer", padding: "4px" }}>⏻</motion.span>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { isMobile, isTablet } = useBreakpoint();
@@ -784,25 +932,12 @@ export default function Dashboard() {
             </div>
 
             {/* ── Sidebar Footer ── */}
-            <motion.div
-              animate={{ borderTopColor: ct.accentBorder, background: ct.accentDim }}
-              whileHover={{ background: ct.accentDim.replace("0.18", "0.28") }}
-              transition={{ duration: 0.5 }}
-              style={{ padding: "1rem", borderTop: "1px solid rgba(244,180,0,0.08)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-              <div style={{ width: 30, height: 30 * 1.1547, clipPath: HEX, flexShrink: 0, background: "rgba(244,180,0,0.12)", border: "1px solid rgba(244,180,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem" }}>
-                {currentUser?.avatar || "👤"}
-              </div>
-              <div style={{ flex: 1, overflow: "hidden" }} onClick={() => navigate("/profile")}>
-                <p style={{ fontFamily: "Orbitron, sans-serif", fontSize: "0.68rem", color: "#E8D9A0", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {currentUser?.username || "Worker Bee"}
-                </p>
-                <p style={{ fontFamily: "Syne, sans-serif", fontSize: "0.62rem", color: "rgba(244,180,0,0.4)", margin: "2px 0 0" }}>
-                  {currentUser?.profession ? `${currentUser.profession} • ` : ""}Pro
-                </p>
-              </div>
-              <motion.span whileHover={{ color: "#FFD54F" }} onClick={handleLogout} title="Logout"
-                style={{ color: "rgba(244,180,0,0.35)", fontSize: "0.75rem", cursor: "pointer", padding: "4px" }}>⏻</motion.span>
-            </motion.div>
+            <SidebarFooter
+  currentUser={currentUser}
+  ct={ct}
+  navigate={navigate}
+  handleLogout={handleLogout}
+/>
           </motion.aside>
         )}
       </AnimatePresence>
