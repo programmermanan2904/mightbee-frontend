@@ -726,19 +726,21 @@ export default function Dashboard() {
   }, [messages, isTyping, chatLoading]);
 
   useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const data = await chat.getHistory();
-        const chats = Array.isArray(data) ? data : data.chats || [];
-        setHistory(chats);
-      } catch (err) {
-        console.error("Failed to load history:", err);
-      } finally {
-        setHistoryLoading(false);
-      }
-    };
-    if (auth.isLoggedIn()) loadHistory();
-  }, []);
+  const loadHistory = async () => {
+    try {
+      const data = await chat.getHistory();
+      const chats = Array.isArray(data) ? data : data.chats || [];
+      setHistory(chats);
+    } catch (err) {
+      console.error("Failed to load history:", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+  // ── Only load history when a profile is active ──
+  if (auth.isLoggedIn() && profilesApi.getActive()) loadHistory();
+  else setHistoryLoading(false);
+}, [currentUser]); // ← depend on currentUser, not empty array
 
   const loadConversation = async (convId) => {
     setActive(convId);
