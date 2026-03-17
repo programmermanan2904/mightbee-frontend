@@ -303,40 +303,27 @@ export default function Login() {
 
   // ── Login ──────────────────────────────────────────────────────────────────
   const handleLogin = async () => {
-    if (!loginEmail.trim() || !loginPassword) {
-      showError("Fill all fields, worker bee. 🐝"); return;
-    }
-    setLoading(true); setMsg("");
-    try {
-      const data = await auth.login(loginEmail.trim(), loginPassword);
-      auth.saveSession(data.token, data.user);
+  if (!loginEmail.trim() || !loginPassword) {
+    showError("Fill all fields, worker bee. 🐝"); return;
+  }
+  setLoading(true); setMsg("");
+  try {
+    const data = await auth.login(loginEmail.trim(), loginPassword);
+    auth.saveSession(data.token, data.user);
 
-      // Load profiles to show picker
-      const profilesData = await profilesApi.getAll();
-      const list = profilesData.profiles || [];
-      profilesApi.setCached(list);
+    // fetch + cache profiles, then go to picker
+    const profilesData = await profilesApi.getAll();
+    const list = profilesData.profiles || [];
+    profilesApi.setCached(list);
 
-      if (list.length === 0) {
-        // No profiles → go to profile page to create one
-        showSuccess("Access granted. Entering hive...");
-        setTimeout(() => navigate("/profile"), 800);
-      } else if (list.length === 1) {
-        // Only one profile → auto-select and go to dashboard
-        const selected = await profilesApi.select(list[0]._id);
-        profilesApi.setCached([selected.profile]);
-        showSuccess("Access granted. Entering hive...");
-        setTimeout(() => navigate("/dashboard"), 800);
-      } else {
-        // Multiple profiles → show the picker
-        setPickerProfiles(list);
-        setShowPicker(true);
-      }
-    } catch (err) {
-      showError(err.message || "Something went wrong. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    showSuccess("Access granted. Entering hive...");
+    setTimeout(() => navigate("/pick-profile"), 600);
+  } catch (err) {
+    showError(err.message || "Something went wrong. Try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ── Profile picker selection ───────────────────────────────────────────────
   const handlePickProfile = async (profileId) => {

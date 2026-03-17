@@ -714,12 +714,7 @@ export default function Dashboard() {
       });
       if (activeProfile.preferredTone) setTone(activeProfile.preferredTone);
     } else {
-      setCurrentUser({
-        ...accountUser,
-        username: accountUser?.name || accountUser?.username || "Worker Bee",
-        avatar: "👤",
-      });
-      navigate("/profile");
+      navigate("/pick-profile");
     }
   }, [navigate]);
   // ─────────────────────────────────────────────────────────────────────────

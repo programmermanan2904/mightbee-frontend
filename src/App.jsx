@@ -4,6 +4,7 @@ import Landing   from "./pages/Landing";
 import Login     from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Profile   from "./pages/Profile";
+import PickProfile from "./pages/PickProfile";
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("mb_token");
@@ -25,6 +26,7 @@ function AnimatedRoutes() {
           <Route path="/login"     element={<Login />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/profile"   element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/pick-profile" element={<ProtectedRoute><PickProfile /></ProtectedRoute>} />
         </Routes>
       </motion.div>
     </AnimatePresence>
