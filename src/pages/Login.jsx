@@ -114,35 +114,49 @@ export default function Login() {
   const showSuccess = (text) => { setMsgType("success"); setMsg(text); };
 
   // ── Login ──────────────────────────────────────────────────────────────────
-  const handleLogin = async () => {
-    if (!loginEmail.trim() || !loginPassword) {
-      showError("Fill all fields, worker bee. 🐝"); return;
-    }
-    setLoading(true); setMsg("");
-    try {
-      const data = await auth.login(loginEmail.trim(), loginPassword);
-      auth.saveSession(data.token, data.user);
+ const handleLogin = async () => {
+  if (!loginEmail.trim() || !loginPassword) {
+    showError("Fill all fields, worker bee. 🐝");
+    return;
+  }
 
-      // Clear any stale active profile from previous session
-      profilesApi.clearActive();
+  setLoading(true);
+  setMsg("");
 
-      // Fetch and cache profiles
-      const profilesData = await profilesApi.getAll();
+  try {
+    // ✅ 1. Login (token saved inside auth.login)
+    const data = await auth.login(loginEmail.trim(), loginPassword);
 
-const list = Array.isArray(profilesData?.profiles)
-  ? profilesData.profiles.filter(Boolean)
-  : [];
+    // ✅ 2. Clear old profile
+    profilesApi.clearActive();
 
-profilesApi.setCached(list);
+    // ✅ 3. Fetch profiles
+    const profilesData = await profilesApi.getAll();
 
-      showSuccess("Access granted. Entering hive...");
-      setTimeout(() => navigate("/pick-profile"), 600);
-    } catch (err) {
-      showError(err.message || "Something went wrong. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const list = Array.isArray(profilesData?.profiles)
+      ? profilesData.profiles.filter(Boolean)
+      : [];
+
+    console.log("📂 Profiles:", list);
+
+    // ✅ 4. Cache profiles
+    profilesApi.setCached(list);
+
+    // ✅ 5. Show success
+    showSuccess("Access granted. Entering hive...");
+
+    // ✅ 6. Navigate ONLY ONCE
+    setTimeout(() => {
+      navigate("/pick-profile"); // or "/dashboard" if you want direct entry
+    }, 600);
+
+  } catch (err) {
+    console.error("❌ LOGIN ERROR:", err);
+    showError(err.message || "Something went wrong. Try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ── Signup ─────────────────────────────────────────────────────────────────
   const handleSignup = async () => {
