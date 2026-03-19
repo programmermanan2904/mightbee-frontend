@@ -100,15 +100,21 @@ export default function Login() {
 
   // ── Only redirect if already logged in AND has an active profile ──────────
   useEffect(() => {
-    if (auth.isLoggedIn()) {
-      const active = profilesApi.getActive();
-      if (active) {
-        navigate("/dashboard");
-      } else {
-        navigate("/pick-profile");
-      }
+  const token = localStorage.getItem("mb_token");
+  const profile = localStorage.getItem("mb_active_profile");
+  const justSignedUp = localStorage.getItem("justSignedUp");
+
+  if (token && profile) {
+    if (justSignedUp === "true") {
+      // ✅ Signup → dashboard
+      localStorage.removeItem("justSignedUp");
+      navigate("/dashboard");
+    } else {
+      // ✅ Login → pick profile
+      navigate("/pick-profile");
     }
-  }, [navigate]);
+  }
+}, [navigate]);
 
   const showError   = (text) => { setMsgType("error");   setMsg(text); };
   const showSuccess = (text) => { setMsgType("success"); setMsg(text); };
@@ -160,35 +166,52 @@ export default function Login() {
 
   // ── Signup ─────────────────────────────────────────────────────────────────
   const handleSignup = async () => {
-    if (!username.trim())    { showError("Username is required, worker bee. 🐝"); return; }
-    if (!email.trim())       { showError("Email is required."); return; }
-    if (password.length < 6) { showError("Password must be at least 6 characters."); return; }
-    if (!profession)         { showError("Choose your profession so Livvy knows you."); return; }
-    if (!displayName.trim()) { showError("Give your hive member a name."); return; }
+  if (!username.trim())    { showError("Username is required, worker bee. 🐝"); return; }
+  if (!email.trim())       { showError("Email is required."); return; }
+  if (password.length < 6) { showError("Password must be at least 6 characters."); return; }
+  if (!profession)         { showError("Choose your profession so Livvy knows you."); return; }
+  if (!displayName.trim()) { showError("Give your hive member a name."); return; }
 
-    setLoading(true); setMsg("");
-    try {
-      const data = await auth.register(username.trim(), email.trim(), password, profession);
-      auth.saveSession(data.token, data.user);
+  setLoading(true);
+  setMsg("");
 
-      const profileData = await profilesApi.create(
-        displayName.trim() || username.trim(),
-        selectedAvatar,
-        profession
-      );
-      const newProfile = profileData.profile;
+  try {
+    // ✅ REGISTER (token auto saved)
+    await auth.register(
+      username.trim(),
+      email.trim(),
+      password,
+      profession
+    );
 
-      const selected = await profilesApi.select(newProfile._id);
-      profilesApi.setCached([selected.profile]);
+    // ✅ CREATE PROFILE
+    const profileData = await profilesApi.create(
+      displayName.trim() || username.trim(),
+      selectedAvatar,
+      profession
+    );
 
-      showSuccess("Welcome to the hive! 🐝");
-      setTimeout(() => navigate("/dashboard"), 800);
-    } catch (err) {
-      showError(err.message || "Something went wrong. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const newProfile = profileData.profile;
+
+    // ✅ SELECT PROFILE
+    await profilesApi.select(newProfile._id);
+
+    // ✅ FLAG (IMPORTANT)
+    localStorage.setItem("justSignedUp", "true");
+
+    showSuccess("Welcome to the hive! 🐝");
+
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, 600);
+
+  } catch (err) {
+    console.error("❌ SIGNUP ERROR:", err);
+    showError(err.message || "Something went wrong. Try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSubmit = () => {
     if (isSignup) handleSignup();
