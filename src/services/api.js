@@ -196,6 +196,14 @@ export const profiles = {
     // ✅ IMPORTANT: Ensure correct key from backend
     const profileToken = data.profileToken || data.token;
 
+if (!profileToken) {
+  console.error("❌ FULL RESPONSE:", data);
+  throw new Error("Profile token missing from backend");
+}
+
+localStorage.setItem("mb_profile_token", profileToken);
+console.log("✅ SAVED PROFILE TOKEN:", profileToken);
+
     if (!profileToken) {
       console.error("❌ PROFILE TOKEN MISSING IN RESPONSE");
       throw new Error("Profile token missing");
