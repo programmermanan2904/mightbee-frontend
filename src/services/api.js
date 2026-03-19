@@ -18,6 +18,13 @@ function getProfileToken() {
 async function request(path, options = {}) {
   const token = getAccountToken();
 
+console.log("🔑 Account Token:", token);
+
+// 🚨 STEP 3 ADD THIS BLOCK HERE
+if (!token || token === "undefined") {
+  console.warn("🚫 BLOCKED REQUEST: No valid token");
+}
+
   const cleanBase = BASE_URL?.replace(/\/$/, "");
   const finalURL = `${cleanBase}${path}`;
 
@@ -26,7 +33,9 @@ async function request(path, options = {}) {
 
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token && token !== "undefined"
+  ? { Authorization: `Bearer ${token}` }
+  : {}),
     ...options.headers,
   };
 
@@ -109,7 +118,12 @@ export const auth = {
     console.log("✅ LOGIN RESPONSE:", res);
 
     // Save token
-    localStorage.setItem("mb_token", res.token);
+    if (!res.token) {
+  console.error("❌ TOKEN MISSING IN RESPONSE:", res);
+} else {
+  localStorage.setItem("mb_token", res.token);
+  console.log("✅ TOKEN STORED:", res.token);
+}
     localStorage.setItem("mb_user", JSON.stringify(res.user));
 
     console.log("💾 TOKEN SAVED");
