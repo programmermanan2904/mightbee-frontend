@@ -690,33 +690,45 @@ export default function Dashboard() {
   const ct = TONES.find(t => t.id === tone) || TONES[0];
 
   // ── Auth guard + profile check ────────────────────────────────────────────
-  useEffect(() => {
-    // Only run once — the missing guard was the root cause of the infinite loop
-    if (authChecked.current) return;
-    authChecked.current = true;
+ useEffect(() => {
+  if (authChecked.current) return;
+  authChecked.current = true;
 
-    if (!auth.isLoggedIn()) {
-      navigate("/login");
-      return;
-    }
+  const token = localStorage.getItem("mb_token");
 
-    const accountUser = auth.getUser();
-    const activeProfile = profilesApi.getActive();
+  console.log("🧠 DASHBOARD TOKEN CHECK:", token);
 
-    if (activeProfile) {
-      setCurrentUser({
-        ...accountUser,
-        username: activeProfile.name,
-        avatar: activeProfile.avatar,
-        profession: activeProfile.profession,
-        preferredTone: activeProfile.preferredTone,
-        profileId: activeProfile._id,
-      });
-      if (activeProfile.preferredTone) setTone(activeProfile.preferredTone);
-    } else {
-      navigate("/pick-profile");
-    }
-  }, [navigate]);
+  if (!token) {
+    console.log("❌ No token → redirect login");
+    navigate("/login");
+    return;
+  }
+
+  const accountUser = auth.getUser();
+  const activeProfile = profilesApi.getActive();
+
+  if (!activeProfile) {
+    console.log("❌ No profile → redirect pick-profile");
+    navigate("/pick-profile");
+    return;
+  }
+
+  console.log("✅ AUTH OK");
+
+  setCurrentUser({
+    ...accountUser,
+    username: activeProfile.name,
+    avatar: activeProfile.avatar,
+    profession: activeProfile.profession,
+    preferredTone: activeProfile.preferredTone,
+    profileId: activeProfile._id,
+  });
+
+  if (activeProfile.preferredTone) {
+    setTone(activeProfile.preferredTone);
+  }
+
+}, [navigate]);
   // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => { if (isMobile) setSidebar(false); }, [isMobile]);
@@ -738,8 +750,14 @@ export default function Dashboard() {
     }
   };
   // ── Only load history when a profile is active ──
-  if (auth.isLoggedIn() && profilesApi.getActive()) loadHistory();
-  else setHistoryLoading(false);
+  const token = localStorage.getItem("mb_token");
+const activeProfile = profilesApi.getActive();
+
+if (token && activeProfile) {
+  loadHistory();
+} else {
+  setHistoryLoading(false);
+}
 }, [currentUser]); // ← depend on currentUser, not empty array
 
   const loadConversation = async (convId) => {
