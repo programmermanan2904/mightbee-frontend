@@ -1,6 +1,6 @@
 const BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 
-// 🔥 GLOBAL DEBUG
+// 🔥 DEBUG
 console.log("🚀 BASE_URL:", BASE_URL);
 
 // ================= TOKEN HELPERS =================
@@ -38,14 +38,20 @@ async function request(path, options = {}) {
     headers,
   });
 
+  console.log("📊 STATUS →", res.status);
+
   let data;
+
   try {
-    data = await res.json();
-  } catch {
+    const text = await res.text(); // ✅ FIXED
+    console.log("📦 RAW RESPONSE:", text);
+
+    data = text ? JSON.parse(text) : {};
+  } catch (err) {
+    console.error("❌ JSON PARSE ERROR:", err);
     data = {};
   }
 
-  console.log("📊 STATUS →", res.status);
   console.log("📥 RESPONSE →", data);
 
   if (!res.ok) {
@@ -76,14 +82,20 @@ async function profileRequest(path, options = {}) {
     headers,
   });
 
+  console.log("📊 PROFILE STATUS →", res.status);
+
   let data;
+
   try {
-    data = await res.json();
-  } catch {
+    const text = await res.text();
+    console.log("📦 PROFILE RAW RESPONSE:", text);
+
+    data = text ? JSON.parse(text) : {};
+  } catch (err) {
+    console.error("❌ PROFILE JSON ERROR:", err);
     data = {};
   }
 
-  console.log("📊 PROFILE STATUS →", res.status);
   console.log("📥 PROFILE RESPONSE →", data);
 
   if (!res.ok) {
@@ -115,28 +127,29 @@ export const auth = {
   },
 
   register: async (name, email, password, profession) => {
-  console.log("📝 REGISTER:", email);
+    console.log("📝 REGISTER:", email);
 
-  const res = await request("/auth/register", {
-    method: "POST",
-    body: JSON.stringify({ name, email, password, profession }),
-  });
+    const res = await request("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password, profession }),
+    });
 
-  console.log("✅ REGISTER RESPONSE:", res);
+    console.log("✅ REGISTER RESPONSE:", res);
 
-  // ✅ THIS IS THE MISSING PIECE
-  if (res.token) {
-    localStorage.setItem("mb_token", res.token);
-    localStorage.setItem("mb_user", JSON.stringify(res.user));
-    console.log("✅ TOKEN SAVED AFTER SIGNUP");
-  }
+    // ✅ FIXED: SAVE TOKEN AFTER SIGNUP
+    if (res.token) {
+      localStorage.setItem("mb_token", res.token);
+      localStorage.setItem("mb_user", JSON.stringify(res.user));
+      console.log("✅ TOKEN SAVED AFTER SIGNUP");
+    } else {
+      console.error("❌ TOKEN NOT FOUND IN RESPONSE");
+    }
 
-  return res;
-},
+    return res;
+  },
 
   logout: () => {
     console.log("🚪 LOGOUT");
-
     localStorage.clear();
   },
 
@@ -183,6 +196,8 @@ export const profiles = {
 
     localStorage.setItem("mb_profile_token", data.profileToken);
     localStorage.setItem("mb_active_profile", JSON.stringify(data.profile));
+
+    console.log("✅ PROFILE SELECTED");
 
     return data;
   },
