@@ -108,28 +108,28 @@ async function profileRequest(path, options = {}) {
 
 export const auth = {
   login: async (email, password) => {
-    console.log("🔐 LOGIN ATTEMPT:", email);
+  console.log("🔐 LOGIN ATTEMPT:", email);
 
-    const res = await request("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
+  const res = await request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
 
-    console.log("✅ LOGIN RESPONSE:", res);
+  console.log("✅ LOGIN RESPONSE:", res);
 
-    // Save token
-    if (!res.token) {
-  console.error("❌ TOKEN MISSING IN RESPONSE:", res);
-} else {
-  localStorage.setItem("mb_token", res.token);
-  console.log("✅ TOKEN STORED:", res.token);
-}
-    localStorage.setItem("mb_user", JSON.stringify(res.user));
+  // ✅ FIXED: SAVE TOKEN PROPERLY
+  if (!res.token) {
+    console.error("❌ TOKEN MISSING IN RESPONSE:", res);
+    throw new Error("Login failed: No token received");
+  } else {
+    localStorage.setItem("mb_token", res.token); // ⭐ THIS WAS MISSING
+    console.log("✅ TOKEN STORED:", res.token);
+  }
 
-    console.log("💾 TOKEN SAVED");
+  localStorage.setItem("mb_user", JSON.stringify(res.user));
 
-    return res;
-  },
+  return res;
+},
 
   register: (name, email, password, profession) => {
     console.log("📝 REGISTER:", email);
