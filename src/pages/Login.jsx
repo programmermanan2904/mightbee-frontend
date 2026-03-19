@@ -99,18 +99,18 @@ export default function Login() {
   const isSignup = mode === "signup";
 
   // ── Only redirect if already logged in AND has an active profile ──────────
-  useEffect(() => {
+useEffect(() => {
   const token = localStorage.getItem("mb_token");
   const profile = localStorage.getItem("mb_active_profile");
+  const profileToken = localStorage.getItem("mb_profile_token");
   const justSignedUp = localStorage.getItem("justSignedUp");
 
-  if (token && profile) {
+  // ✅ ONLY redirect if ALL are ready
+  if (token && profile && profileToken) {
     if (justSignedUp === "true") {
-      // ✅ Signup → dashboard
       localStorage.removeItem("justSignedUp");
       navigate("/dashboard");
     } else {
-      // ✅ Login → pick profile
       navigate("/pick-profile");
     }
   }
