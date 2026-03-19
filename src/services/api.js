@@ -115,22 +115,24 @@ export const auth = {
   },
 
   register: async (name, email, password, profession) => {
-    console.log("📝 REGISTER:", email);
+  console.log("📝 REGISTER:", email);
 
-    const res = await request("/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ name, email, password, profession }),
-    });
+  const res = await request("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ name, email, password, profession }),
+  });
 
-    // ✅ AUTO LOGIN AFTER REGISTER
-    if (res.token) {
-      localStorage.setItem("mb_token", res.token);
-      localStorage.setItem("mb_user", JSON.stringify(res.user));
-      console.log("✅ REGISTER AUTO LOGIN");
-    }
+  console.log("✅ REGISTER RESPONSE:", res);
 
-    return res;
-  },
+  // ✅ THIS IS THE MISSING PIECE
+  if (res.token) {
+    localStorage.setItem("mb_token", res.token);
+    localStorage.setItem("mb_user", JSON.stringify(res.user));
+    console.log("✅ TOKEN SAVED AFTER SIGNUP");
+  }
+
+  return res;
+},
 
   logout: () => {
     console.log("🚪 LOGOUT");
