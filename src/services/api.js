@@ -1,41 +1,33 @@
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 
 // 🔥 GLOBAL DEBUG
 console.log("🚀 BASE_URL:", BASE_URL);
 
+// ================= TOKEN HELPERS =================
+
 function getAccountToken() {
   const token = localStorage.getItem("mb_token");
   console.log("🔑 Account Token:", token);
-  return token;
+  return token && token !== "undefined" ? token : null;
 }
 
 function getProfileToken() {
   const token = localStorage.getItem("mb_profile_token");
   console.log("🎭 Profile Token:", token);
-  return token;
+  return token && token !== "undefined" ? token : null;
 }
+
+// ================= CORE REQUEST =================
 
 async function request(path, options = {}) {
   const token = getAccountToken();
 
-console.log("🔑 Account Token:", token);
-
-// 🚨 STEP 3 ADD THIS BLOCK HERE
-if (!token || token === "undefined") {
-  console.warn("🚫 BLOCKED REQUEST: No valid token");
-}
-
-  const cleanBase = BASE_URL?.replace(/\/$/, "");
-  const finalURL = `${cleanBase}${path}`;
-
+  const finalURL = `${BASE_URL}${path}`;
   console.log("📡 REQUEST →", finalURL);
-  console.log("📦 METHOD →", options.method || "GET");
 
   const headers = {
     "Content-Type": "application/json",
-    ...(token && token !== "undefined"
-  ? { Authorization: `Bearer ${token}` }
-  : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
@@ -46,8 +38,6 @@ if (!token || token === "undefined") {
     headers,
   });
 
-  console.log("📊 STATUS →", res.status);
-
   let data;
   try {
     data = await res.json();
@@ -55,28 +45,27 @@ if (!token || token === "undefined") {
     data = {};
   }
 
+  console.log("📊 STATUS →", res.status);
   console.log("📥 RESPONSE →", data);
 
   if (!res.ok) {
-    console.error("❌ API ERROR:", data);
-    throw new Error(data.message || data.error || "Something went wrong");
+    throw new Error(data.message || "Request failed");
   }
 
   return data;
 }
 
+// ================= PROFILE REQUEST =================
+
 async function profileRequest(path, options = {}) {
   const token = getProfileToken();
 
-  const cleanBase = BASE_URL?.replace(/\/$/, "");
-  const finalURL = `${cleanBase}${path}`;
-
+  const finalURL = `${BASE_URL}${path}`;
   console.log("📡 PROFILE REQUEST →", finalURL);
-  console.log("📦 METHOD →", options.method || "GET");
 
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Profile ${token}` } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}), // ✅ FIXED
     ...options.headers,
   };
 
@@ -87,8 +76,6 @@ async function profileRequest(path, options = {}) {
     headers,
   });
 
-  console.log("📊 PROFILE STATUS →", res.status);
-
   let data;
   try {
     data = await res.json();
@@ -96,106 +83,98 @@ async function profileRequest(path, options = {}) {
     data = {};
   }
 
+  console.log("📊 PROFILE STATUS →", res.status);
   console.log("📥 PROFILE RESPONSE →", data);
 
   if (!res.ok) {
-    console.error("❌ PROFILE API ERROR:", data);
-    throw new Error(data.message || data.error || "Something went wrong");
+    throw new Error(data.message || "Profile request failed");
   }
 
   return data;
 }
 
+// ================= AUTH =================
+
 export const auth = {
   login: async (email, password) => {
-  console.log("🔐 LOGIN ATTEMPT:", email);
+    console.log("🔐 LOGIN:", email);
 
-  const res = await request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
+    const res = await request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
 
-  console.log("✅ LOGIN RESPONSE:", res);
+    if (!res.token) throw new Error("No token received");
 
-  // ✅ FIXED: SAVE TOKEN PROPERLY
-  if (!res.token) {
-    console.error("❌ TOKEN MISSING IN RESPONSE:", res);
-    throw new Error("Login failed: No token received");
-  } else {
-    localStorage.setItem("mb_token", res.token); // ⭐ THIS WAS MISSING
-    console.log("✅ TOKEN STORED:", res.token);
-  }
+    localStorage.setItem("mb_token", res.token);
+    localStorage.setItem("mb_user", JSON.stringify(res.user));
 
-  localStorage.setItem("mb_user", JSON.stringify(res.user));
+    console.log("✅ LOGIN SUCCESS");
 
-  return res;
-},
+    return res;
+  },
 
-  register: (name, email, password, profession) => {
+  register: async (name, email, password, profession) => {
     console.log("📝 REGISTER:", email);
 
-    return request("/auth/register", {
+    const res = await request("/auth/register", {
       method: "POST",
       body: JSON.stringify({ name, email, password, profession }),
     });
+
+    // ✅ AUTO LOGIN AFTER REGISTER
+    if (res.token) {
+      localStorage.setItem("mb_token", res.token);
+      localStorage.setItem("mb_user", JSON.stringify(res.user));
+      console.log("✅ REGISTER AUTO LOGIN");
+    }
+
+    return res;
   },
 
   logout: () => {
     console.log("🚪 LOGOUT");
 
-    localStorage.removeItem("mb_token");
-    localStorage.removeItem("mb_user");
-    localStorage.removeItem("mb_profile_token");
-    localStorage.removeItem("mb_active_profile");
-    localStorage.removeItem("mb_profiles_cache");
+    localStorage.clear();
   },
 
   getUser: () => {
     try {
-      const user = JSON.parse(localStorage.getItem("mb_user"));
-      console.log("👤 USER:", user);
-      return user;
+      return JSON.parse(localStorage.getItem("mb_user"));
     } catch {
       return null;
     }
   },
 
   getToken: () => getAccountToken(),
-  isLoggedIn: () => Boolean(getAccountToken()),
+
+  isLoggedIn: () => {
+    const token = getAccountToken();
+    return !!token;
+  },
 };
 
+// ================= PROFILES =================
+
 export const profiles = {
-  getAll: () => {
-    console.log("📂 FETCHING PROFILES");
-    return request("/profiles");
-  },
+  getAll: () => request("/profiles"),
 
-  create: (name, avatar, profession) => {
-    console.log("➕ CREATE PROFILE:", name);
-
-    return request("/profiles", {
+  create: (name, avatar, profession) =>
+    request("/profiles", {
       method: "POST",
       body: JSON.stringify({ name, avatar, profession }),
-    });
-  },
+    }),
 
-  update: (profileId, updates) => {
-    console.log("✏️ UPDATE PROFILE:", profileId);
-
-    return request(`/profiles/${profileId}`, {
+  update: (profileId, updates) =>
+    request(`/profiles/${profileId}`, {
       method: "PATCH",
       body: JSON.stringify(updates),
-    });
-  },
+    }),
 
-  delete: (profileId) => {
-    console.log("🗑 DELETE PROFILE:", profileId);
-    return request(`/profiles/${profileId}`, { method: "DELETE" });
-  },
+  delete: (profileId) =>
+    request(`/profiles/${profileId}`, { method: "DELETE" }),
 
   select: async (profileId) => {
-    console.log("🎯 SELECT PROFILE:", profileId);
-
     const data = await request(`/profiles/${profileId}/select`, {
       method: "POST",
     });
@@ -203,100 +182,72 @@ export const profiles = {
     localStorage.setItem("mb_profile_token", data.profileToken);
     localStorage.setItem("mb_active_profile", JSON.stringify(data.profile));
 
-    console.log("✅ PROFILE SELECTED");
-
     return data;
   },
 
   getActive: () => {
     try {
-      const active = JSON.parse(localStorage.getItem("mb_active_profile"));
-      console.log("🎭 ACTIVE PROFILE:", active);
-      return active;
+      return JSON.parse(localStorage.getItem("mb_active_profile"));
     } catch {
       return null;
     }
   },
 
   clearActive: () => {
-    console.log("🧹 CLEAR ACTIVE PROFILE");
     localStorage.removeItem("mb_profile_token");
     localStorage.removeItem("mb_active_profile");
   },
 
   getCached: () => {
     try {
-      const cache = JSON.parse(localStorage.getItem("mb_profiles_cache") || "[]");
-      console.log("📦 CACHE:", cache);
-      return cache;
+      return JSON.parse(localStorage.getItem("mb_profiles_cache") || "[]");
     } catch {
       return [];
     }
   },
 
   setCached: (list) => {
-    console.log("💾 SET CACHE:", list);
-    try {
-      localStorage.setItem("mb_profiles_cache", JSON.stringify(list));
-    } catch {}
+    localStorage.setItem("mb_profiles_cache", JSON.stringify(list));
   },
 };
+
+// ================= CHAT =================
 
 export const chat = {
-  create: (tone) => {
-    console.log("💬 CREATE CHAT:", tone);
-    return profileRequest("/chats", {
+  create: (tone) =>
+    profileRequest("/chats", {
       method: "POST",
       body: JSON.stringify({ tone }),
-    });
-  },
+    }),
 
-  sendMessage: (chatId, message, tone) => {
-    console.log("📨 SEND MESSAGE:", chatId);
-
-    return profileRequest(`/chats/${chatId}/messages`, {
+  sendMessage: (chatId, message, tone) =>
+    profileRequest(`/chats/${chatId}/messages`, {
       method: "POST",
       body: JSON.stringify({ content: message, tone }),
-    });
-  },
+    }),
 
-  getHistory: () => {
-    console.log("📜 GET HISTORY");
-    return profileRequest("/chats");
-  },
+  getHistory: () => profileRequest("/chats"),
 
-  getConversation: (id) => {
-    console.log("📖 GET CONVERSATION:", id);
-    return profileRequest(`/chats/${id}`);
-  },
+  getConversation: (id) => profileRequest(`/chats/${id}`),
 
-  deleteConversation: (id) => {
-    console.log("🗑 DELETE CHAT:", id);
-    return profileRequest(`/chats/${id}`, { method: "DELETE" });
-  },
+  deleteConversation: (id) =>
+    profileRequest(`/chats/${id}`, { method: "DELETE" }),
 
-  rename: (chatId, title) => {
-    console.log("✏️ RENAME CHAT:", chatId);
-
-    return profileRequest(`/chats/${chatId}`, {
+  rename: (chatId, title) =>
+    profileRequest(`/chats/${chatId}`, {
       method: "PATCH",
       body: JSON.stringify({ title }),
-    });
-  },
+    }),
 };
 
+// ================= USER =================
+
 export const user = {
-  getProfile: () => {
-    console.log("👤 FETCH USER PROFILE");
-    return request("/user/me");
-  },
+  getProfile: () => request("/user/me"),
 
-  updateProfile: (updates) => {
-    console.log("✏️ UPDATE USER PROFILE");
-
-    return request("/user/profile", {
+  updateProfile: (updates) =>
+    request("/user/profile", {
       method: "PATCH",
       body: JSON.stringify(updates),
-    });
-  },
+    }),
 };
