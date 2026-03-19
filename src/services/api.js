@@ -27,7 +27,7 @@ async function request(path, options = {}) {
 
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
 
@@ -43,7 +43,7 @@ async function request(path, options = {}) {
   let data;
 
   try {
-    const text = await res.text(); // ✅ FIXED
+    const text = await res.text();
     console.log("📦 RAW RESPONSE:", text);
 
     data = text ? JSON.parse(text) : {};
@@ -61,17 +61,22 @@ async function request(path, options = {}) {
   return data;
 }
 
-// ================= PROFILE REQUEST =================
+// ================= PROFILE REQUEST (FIXED) =================
 
 async function profileRequest(path, options = {}) {
-  const token = getProfileToken();
+  const accountToken = getAccountToken();
+  const profileToken = getProfileToken();
 
   const finalURL = `${BASE_URL}${path}`;
   console.log("📡 PROFILE REQUEST →", finalURL);
 
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}), // ✅ FIXED
+
+    // ✅ Send BOTH tokens correctly
+    ...(accountToken && { Authorization: `Bearer ${accountToken}` }),
+    ...(profileToken && { "x-profile-token": profileToken }),
+
     ...options.headers,
   };
 
@@ -136,13 +141,10 @@ export const auth = {
 
     console.log("✅ REGISTER RESPONSE:", res);
 
-    // ✅ FIXED: SAVE TOKEN AFTER SIGNUP
     if (res.token) {
       localStorage.setItem("mb_token", res.token);
       localStorage.setItem("mb_user", JSON.stringify(res.user));
       console.log("✅ TOKEN SAVED AFTER SIGNUP");
-    } else {
-      console.error("❌ TOKEN NOT FOUND IN RESPONSE");
     }
 
     return res;
@@ -163,10 +165,7 @@ export const auth = {
 
   getToken: () => getAccountToken(),
 
-  isLoggedIn: () => {
-    const token = getAccountToken();
-    return !!token;
-  },
+  isLoggedIn: () => !!getAccountToken(),
 };
 
 // ================= PROFILES =================
@@ -194,7 +193,15 @@ export const profiles = {
       method: "POST",
     });
 
-    localStorage.setItem("mb_profile_token", data.profileToken);
+    // ✅ IMPORTANT: Ensure correct key from backend
+    const profileToken = data.profileToken || data.token;
+
+    if (!profileToken) {
+      console.error("❌ PROFILE TOKEN MISSING IN RESPONSE");
+      throw new Error("Profile token missing");
+    }
+
+    localStorage.setItem("mb_profile_token", profileToken);
     localStorage.setItem("mb_active_profile", JSON.stringify(data.profile));
 
     console.log("✅ PROFILE SELECTED");
@@ -213,18 +220,6 @@ export const profiles = {
   clearActive: () => {
     localStorage.removeItem("mb_profile_token");
     localStorage.removeItem("mb_active_profile");
-  },
-
-  getCached: () => {
-    try {
-      return JSON.parse(localStorage.getItem("mb_profiles_cache") || "[]");
-    } catch {
-      return [];
-    }
-  },
-
-  setCached: (list) => {
-    localStorage.setItem("mb_profiles_cache", JSON.stringify(list));
   },
 };
 
