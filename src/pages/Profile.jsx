@@ -464,109 +464,124 @@ export default function Profile() {
 
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!auth.isLoggedIn()) { navigate("/login"); return; }
-    const load = async () => {
-      try {
-        const [accountData, profilesData] = await Promise.all([
-          userApi.getProfile(),
-          profilesApi.getAll(),
-        ]);
-        setUsername(accountData.user?.name || accountData.name || "");
-        setEmail(accountData.user?.email || accountData.email || "");
-        setProfession(accountData.user?.profession || accountData.profession || null);
-        const list = profilesData.profiles || [];
-        setProfileList(list);
-        profilesApi.setCached(list); // ← sync cache
+  if (!auth.isLoggedIn()) { navigate("/login"); return; }
 
-        const active = profilesApi.getActive();
-        if (active) setActiveProfileId(active._id);
-      } catch {
-        const cached = auth.getUser();
-        if (cached) {
-          setUsername(cached.name || "");
-          setEmail(cached.email || "");
-          setProfession(cached.profession || null);
-        }
-        showToast("Couldn't load latest data.", "error");
-      } finally {
-        setPageLoading(false);
-      }
-    };
-    load();
-  }, [navigate, showToast]);
+  const load = async () => {
+    try {
+      const [accountData, profilesData] = await Promise.all([
+        userApi.getProfile(),
+        profilesApi.getAll(),
+      ]);
+
+      setUsername(accountData?.user?.name || accountData?.name || "");
+      setEmail(accountData?.user?.email || accountData?.email || "");
+      setProfession(accountData?.user?.profession || accountData?.profession || null);
+
+      const list = Array.isArray(profilesData?.profiles)
+        ? profilesData.profiles.filter(Boolean)
+        : [];
+
+      setProfileList(list);
+      profilesApi.setCached(list);
+
+      const active = profilesApi.getActive();
+      if (active?._id) setActiveProfileId(active._id);
+
+    } catch {
+      showToast("Couldn't load latest data.", "error");
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  load();
+}, [navigate, showToast]);
 
   // ── Select profile → go to dashboard ─────────────────────────────────────
   const handleSelectProfile = async (profileId) => {
-    if (profileId === activeProfileId) return;
-    setSelectLoading(profileId);
-    try {
-      const data = await profilesApi.select(profileId);
+  if (!profileId || profileId === activeProfileId) return;
+
+  setSelectLoading(profileId);
+  try {
+    const data = await profilesApi.select(profileId);
+
+    if (data?.profile?._id) {
       setActiveProfileId(data.profile._id);
       showToast(`Switched to ${data.profile.name} 🐝`);
-      return data;
-    } catch (err) {
-      showToast(err.message || "Failed to switch profile.", "error");
-    } finally {
-      setSelectLoading(null);
     }
-  };
+  } catch (err) {
+    showToast(err.message || "Failed to switch profile.", "error");
+  } finally {
+    setSelectLoading(null);
+  }
+};
 
   // ── Create ────────────────────────────────────────────────────────────────
   const handleCreateProfile = async ({ name, avatar, profession: prof }) => {
-    setModalSaving(true);
-    try {
-      const data = await profilesApi.create(name, avatar, prof);
-      const newList = [...profileList, data.profile];
-      setProfileList(newList);
-      profilesApi.setCached(newList); // ← sync cache
-      setModal(null);
-      showToast(`${name} added to the hive! 🐝`);
-    } catch (err) {
-      showToast(err.message || "Failed to create profile.", "error");
-    } finally {
-      setModalSaving(false);
-    }
-  };
+  setModalSaving(true);
+  try {
+    const data = await profilesApi.create(name, avatar, prof);
+
+    if (!data?.profile?._id) throw new Error("Invalid profile");
+
+    const newList = [...profileList, data.profile].filter(Boolean);
+
+    setProfileList(newList);
+    profilesApi.setCached(newList);
+
+    setModal(null);
+    showToast(`${name} added! 🐝`);
+  } catch (err) {
+    showToast(err.message || "Failed to create profile.", "error");
+  } finally {
+    setModalSaving(false);
+  }
+};
 
   // ── Edit ──────────────────────────────────────────────────────────────────
   const handleEditProfile = async ({ name, avatar, profession: prof }) => {
-    setModalSaving(true);
-    try {
-      const data = await profilesApi.update(modal.profile._id, { name, avatar, profession: prof });
-      const newList = profileList.map(p => p._id === data.profile._id ? data.profile : p);
-      setProfileList(newList);
-      profilesApi.setCached(newList); // ← sync cache
-      if (data.profile._id === activeProfileId) {
-        const current = profilesApi.getActive();
-        localStorage.setItem("mb_active_profile", JSON.stringify({ ...current, ...data.profile }));
-      }
-      setModal(null);
-      showToast("Profile updated!");
-    } catch (err) {
-      showToast(err.message || "Failed to update profile.", "error");
-    } finally {
-      setModalSaving(false);
-    }
-  };
+  setModalSaving(true);
+  try {
+    const data = await profilesApi.update(modal?.profile?._id, { name, avatar, profession: prof });
+
+    const newList = profileList
+      .filter(Boolean)
+      .map(p => (p?._id === data?.profile?._id ? data.profile : p));
+
+    setProfileList(newList);
+    profilesApi.setCached(newList);
+
+    setModal(null);
+    showToast("Profile updated!");
+  } catch (err) {
+    showToast(err.message || "Failed to update profile.", "error");
+  } finally {
+    setModalSaving(false);
+  }
+};
+
 
   // ── Delete ────────────────────────────────────────────────────────────────
   const handleDeleteProfile = async () => {
-    setDeleting(true);
-    try {
-      await profilesApi.delete(modal.profile._id);
-      const wasActive = modal.profile._id === activeProfileId;
-      const newList = profileList.filter(p => p._id !== modal.profile._id);
-      setProfileList(newList);
-      profilesApi.setCached(newList); // ← sync cache
-      if (wasActive) { profilesApi.clearActive(); setActiveProfileId(null); }
-      setModal(null);
-      showToast("Profile deleted.");
-    } catch (err) {
-      showToast(err.message || "Failed to delete profile.", "error");
-    } finally {
-      setDeleting(false);
-    }
-  };
+  setDeleting(true);
+  try {
+    await profilesApi.delete(modal?.profile?._id);
+
+    const newList = profileList.filter(
+      p => p && p._id !== modal?.profile?._id
+    );
+
+    setProfileList(newList);
+    profilesApi.setCached(newList);
+
+    setModal(null);
+    showToast("Profile deleted.");
+  } catch (err) {
+    showToast(err.message || "Failed to delete profile.", "error");
+  } finally {
+    setDeleting(false);
+  }
+};
 
   // ── Account saves ─────────────────────────────────────────────────────────
   const saveInfo = async () => {
@@ -684,19 +699,24 @@ export default function Profile() {
 
           <AnimatePresence mode="popLayout">
             <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 16 : 24, justifyContent: profileList.length === 0 ? "center" : "flex-start", minHeight: 100, alignItems: "flex-start" }}>
-              {profileList.map(p => (
-                <ProfileCard
-                  key={p._id}
-                  profile={p}
-                  isActive={p._id === activeProfileId}
-                  onSelect={handleSelectProfile}
-                  onEdit={(profile) => setModal({ type: "edit", profile })}
-                  onDelete={(profile) => setModal({ type: "delete", profile })}
-                  selectLoading={selectLoading}
-                  isMobile={isMobile}
-                  navigate={navigate}
-                />
-              ))}
+              {Array.isArray(profileList) &&
+  profileList.filter(Boolean).map(p => {
+    if (!p?._id) return null;
+
+    return (
+      <ProfileCard
+        key={p._id}
+        profile={p}
+        isActive={p._id === activeProfileId}
+        onSelect={handleSelectProfile}
+        onEdit={(profile) => setModal({ type: "edit", profile })}
+        onDelete={(profile) => setModal({ type: "delete", profile })}
+        selectLoading={selectLoading}
+        isMobile={isMobile}
+        navigate={navigate}
+      />
+    );
+})}
 
               {profileList.length < MAX_PROFILES && (
                 <AddProfileCard onClick={() => setModal({ type: "create" })} isMobile={isMobile} />

@@ -128,8 +128,12 @@ export default function Login() {
 
       // Fetch and cache profiles
       const profilesData = await profilesApi.getAll();
-      const list = profilesData.profiles || [];
-      profilesApi.setCached(list);
+
+const list = Array.isArray(profilesData?.profiles)
+  ? profilesData.profiles.filter(Boolean)
+  : [];
+
+profilesApi.setCached(list);
 
       showSuccess("Access granted. Entering hive...");
       setTimeout(() => navigate("/pick-profile"), 600);

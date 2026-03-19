@@ -7,7 +7,7 @@ const HEX = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
 
 function ProfileCard({ profile, index, onSelect, selecting }) {
   const [hovered, setHovered] = useState(false);
-  const isSelecting = selecting === profile._id;
+  const isSelecting = selecting === profile?._id;
 
   return (
     <motion.div
@@ -16,7 +16,10 @@ function ProfileCard({ profile, index, onSelect, selecting }) {
       transition={{ duration: 0.55, delay: 0.1 + index * 0.09, ease: [0.16, 1, 0.3, 1] }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
-      onClick={() => !selecting && onSelect(profile._id)}
+      onClick={() => {
+  if (!profile?._id || selecting) return;
+  onSelect(profile._id);
+}}
       style={{
         display: "flex", flexDirection: "column", alignItems: "center",
         gap: 16, cursor: selecting ? "wait" : "pointer",
@@ -105,40 +108,47 @@ export default function PickProfile() {
     if (!auth.isLoggedIn()) { navigate("/login"); return; }
 
     const load = async () => {
-      try {
-        // try cache first for instant render
-        const cached = profilesApi.getCached();
-        if (cached.length > 0) {
-          setProfiles(cached);
-          setLoading(false);
-        }
-        // always fetch fresh too
-        const data = await profilesApi.getAll();
-        const list = data.profiles || [];
-        setProfiles(list);
-        profilesApi.setCached(list);
-        if (list.length === 0) navigate("/profile"); // no profiles → create one
-      } catch {
-        const cached = profilesApi.getCached();
-        if (cached.length > 0) setProfiles(cached);
-        else navigate("/profile");
-      } finally {
-        setLoading(false);
-      }
-    };
+  try {
+    const cached = profilesApi.getCached();
+
+    if (Array.isArray(cached) && cached.length > 0) {
+      setProfiles(cached.filter(Boolean));
+      setLoading(false);
+    }
+
+    const data = await profilesApi.getAll();
+
+    const list = Array.isArray(data?.profiles)
+      ? data.profiles.filter(Boolean)
+      : [];
+
+    setProfiles(list);
+    profilesApi.setCached(list);
+
+    if (list.length === 0) navigate("/profile");
+
+  } catch {
+    const cached = profilesApi.getCached();
+    if (cached?.length) setProfiles(cached.filter(Boolean));
+    else navigate("/profile");
+  } finally {
+    setLoading(false);
+  }
+};
     load();
   }, [navigate]);
 
   const handleSelect = async (profileId) => {
-    setSelecting(profileId);
-    try {
-      await profilesApi.select(profileId);
-      setTimeout(() => navigate("/dashboard"), 350);
-    } catch (err) {
-      console.error("Select failed:", err.message);
-      setSelecting(null);
-    }
-  };
+  if (!profileId) return;
+
+  setSelecting(profileId);
+  try {
+    await profilesApi.select(profileId);
+    setTimeout(() => navigate("/dashboard"), 350);
+  } catch {
+    setSelecting(null);
+  }
+};
 
   if (loading) {
     return (
@@ -233,15 +243,19 @@ export default function PickProfile() {
         position: "relative", zIndex: 1,
         marginBottom: "3.5rem",
       }}>
-        {profiles.map((profile, i) => (
-          <ProfileCard
-            key={profile._id}
-            profile={profile}
-            index={i}
-            onSelect={handleSelect}
-            selecting={selecting}
-          />
-        ))}
+        {profiles.filter(Boolean).map((profile, i) => {
+  if (!profile?._id) return null;
+
+  return (
+    <ProfileCard
+      key={profile._id}
+      profile={profile}
+      index={i}
+      onSelect={handleSelect}
+      selecting={selecting}
+    />
+  );
+})}
       </div>
 
       {/* Manage profiles link */}
