@@ -45,8 +45,13 @@ function FloatingHex({ size, x, y, opacity, rotate, delay, color = "#F4B400", bl
   );
 }
 
-function HexInput({ label, type = "text", value, onChange, placeholder }) {
-  const [focused, setFocused] = useState(false);
+// ── HexInput (Login) with optional show/hide password toggle ─────────────────
+function HexInput({ label, type = "text", value, onChange, placeholder, showToggle = false }) {
+  const [focused, setFocused]   = useState(false);
+  const [visible, setVisible]   = useState(false);
+
+  const inputType = showToggle ? (visible ? "text" : "password") : type;
+
   return (
     <div style={{ marginBottom: "1.1rem" }}>
       <label style={{
@@ -56,20 +61,56 @@ function HexInput({ label, type = "text", value, onChange, placeholder }) {
         color: focused ? "#F4B400" : "rgba(244,180,0,0.45)",
         transition: "color 0.2s",
       }}>{label}</label>
-      <input
-        type={type} value={value} onChange={onChange} placeholder={placeholder}
-        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        style={{
-          width: "100%", padding: "11px 15px",
-          background: "rgba(8,13,26,0.85)",
-          border: `1px solid ${focused ? "rgba(244,180,0,0.7)" : "rgba(244,180,0,0.15)"}`,
-          borderRadius: 3, color: "#E8D9A0",
-          fontFamily: "Syne, sans-serif", fontSize: "0.88rem",
-          outline: "none", transition: "border-color 0.2s, box-shadow 0.2s",
-          boxShadow: focused ? "0 0 18px rgba(244,180,0,0.13)" : "none",
-          letterSpacing: "0.02em", boxSizing: "border-box",
-        }}
-      />
+
+      <div style={{ position: "relative" }}>
+        <input
+          type={inputType} value={value} onChange={onChange} placeholder={placeholder}
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          style={{
+            width: "100%", padding: showToggle ? "11px 42px 11px 15px" : "11px 15px",
+            background: "rgba(8,13,26,0.85)",
+            border: `1px solid ${focused ? "rgba(244,180,0,0.7)" : "rgba(244,180,0,0.15)"}`,
+            borderRadius: 3, color: "#E8D9A0",
+            fontFamily: "Syne, sans-serif", fontSize: "0.88rem",
+            outline: "none", transition: "border-color 0.2s, box-shadow 0.2s",
+            boxShadow: focused ? "0 0 18px rgba(244,180,0,0.13)" : "none",
+            letterSpacing: "0.02em", boxSizing: "border-box",
+          }}
+        />
+
+        {/* Eye toggle button */}
+        {showToggle && (
+          <button
+            type="button"
+            onClick={() => setVisible(v => !v)}
+            style={{
+              position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+              background: "none", border: "none", cursor: "pointer",
+              color: visible ? "#F4B400" : "rgba(244,180,0,0.35)",
+              fontSize: "0.95rem", padding: 0, lineHeight: 1,
+              transition: "color 0.2s",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+            tabIndex={-1}
+            title={visible ? "Hide password" : "Show password"}
+          >
+            {visible ? (
+              // Eye-off SVG
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            ) : (
+              // Eye SVG
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            )}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -98,120 +139,75 @@ export default function Login() {
 
   const isSignup = mode === "signup";
 
-  // ── Only redirect if already logged in AND has an active profile ──────────
-useEffect(() => {
-  const token = localStorage.getItem("mb_token");
-  const profile = localStorage.getItem("mb_active_profile");
-  const profileToken = localStorage.getItem("mb_profile_token");
-  const justSignedUp = localStorage.getItem("justSignedUp");
+  useEffect(() => {
+    const token = localStorage.getItem("mb_token");
+    const profile = localStorage.getItem("mb_active_profile");
+    const profileToken = localStorage.getItem("mb_profile_token");
+    const justSignedUp = localStorage.getItem("justSignedUp");
 
-  // ✅ ONLY redirect if ALL are ready
-  if (token && profile && profileToken) {
-    if (justSignedUp === "true") {
-      localStorage.removeItem("justSignedUp");
-      navigate("/dashboard");
-    } else {
-      navigate("/pick-profile");
+    if (token && profile && profileToken) {
+      if (justSignedUp === "true") {
+        localStorage.removeItem("justSignedUp");
+        navigate("/dashboard");
+      } else {
+        navigate("/pick-profile");
+      }
     }
-  }
-}, [navigate]);
+  }, [navigate]);
 
   const showError   = (text) => { setMsgType("error");   setMsg(text); };
   const showSuccess = (text) => { setMsgType("success"); setMsg(text); };
 
-  // ── Login ──────────────────────────────────────────────────────────────────
- const handleLogin = async () => {
-  if (!loginEmail.trim() || !loginPassword) {
-    showError("Fill all fields, worker bee. 🐝");
-    return;
-  }
+  const handleLogin = async () => {
+    if (!loginEmail.trim() || !loginPassword) {
+      showError("Fill all fields, worker bee. 🐝");
+      return;
+    }
+    setLoading(true);
+    setMsg("");
+    try {
+      await auth.login(loginEmail.trim(), loginPassword);
+      profilesApi.clearActive();
+      const profilesData = await profilesApi.getAll();
+      const list = Array.isArray(profilesData?.profiles)
+        ? profilesData.profiles.filter(Boolean)
+        : [];
+      profilesApi.setCached(list);
+      showSuccess("Access granted. Entering hive...");
+      setTimeout(() => { navigate("/pick-profile"); }, 600);
+    } catch (err) {
+      showError(err.message || "Something went wrong. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  setLoading(true);
-  setMsg("");
-
-  try {
-    // ✅ 1. Login (token saved inside auth.login)
-    const data = await auth.login(loginEmail.trim(), loginPassword);
-
-    // ✅ 2. Clear old profile
-    profilesApi.clearActive();
-
-    // ✅ 3. Fetch profiles
-    const profilesData = await profilesApi.getAll();
-
-    const list = Array.isArray(profilesData?.profiles)
-      ? profilesData.profiles.filter(Boolean)
-      : [];
-
-    console.log("📂 Profiles:", list);
-
-    // ✅ 4. Cache profiles
-    profilesApi.setCached(list);
-
-    // ✅ 5. Show success
-    showSuccess("Access granted. Entering hive...");
-
-    // ✅ 6. Navigate ONLY ONCE
-    setTimeout(() => {
-      navigate("/pick-profile"); // or "/dashboard" if you want direct entry
-    }, 600);
-
-  } catch (err) {
-    console.error("❌ LOGIN ERROR:", err);
-    showError(err.message || "Something went wrong. Try again.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // ── Signup ─────────────────────────────────────────────────────────────────
   const handleSignup = async () => {
-  if (!username.trim())    { showError("Username is required, worker bee. 🐝"); return; }
-  if (!email.trim())       { showError("Email is required."); return; }
-  if (password.length < 6) { showError("Password must be at least 6 characters."); return; }
-  if (!profession)         { showError("Choose your profession so Livvy knows you."); return; }
-  if (!displayName.trim()) { showError("Give your hive member a name."); return; }
-
-  setLoading(true);
-  setMsg("");
-
-  try {
-    // ✅ REGISTER (token auto saved)
-    await auth.register(
-      username.trim(),
-      email.trim(),
-      password,
-      profession
-    );
-
-    // ✅ CREATE PROFILE
-    const profileData = await profilesApi.create(
-      displayName.trim() || username.trim(),
-      selectedAvatar,
-      profession
-    );
-
-    const newProfile = profileData.profile;
-
-    // ✅ SELECT PROFILE
-    await profilesApi.select(newProfile._id);
-
-    // ✅ FLAG (IMPORTANT)
-    localStorage.setItem("justSignedUp", "true");
-
-    showSuccess("Welcome to the hive! 🐝");
-
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 600);
-
-  } catch (err) {
-    console.error("❌ SIGNUP ERROR:", err);
-    showError(err.message || "Something went wrong. Try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!username.trim())    { showError("Username is required, worker bee. 🐝"); return; }
+    if (!email.trim())       { showError("Email is required."); return; }
+    if (password.length < 6) { showError("Password must be at least 6 characters."); return; }
+    if (!profession)         { showError("Choose your profession so Livvy knows you."); return; }
+    if (!displayName.trim()) { showError("Give your hive member a name."); return; }
+    setLoading(true);
+    setMsg("");
+    try {
+      await auth.register(username.trim(), email.trim(), password, profession);
+      const profileData = await profilesApi.create(
+        displayName.trim() || username.trim(),
+        selectedAvatar,
+        profession
+      );
+      const newProfile = profileData.profile;
+      await profilesApi.select(newProfile._id);
+      localStorage.setItem("justSignedUp", "true");
+      showSuccess("Welcome to the hive! 🐝");
+      setTimeout(() => { navigate("/dashboard"); }, 600);
+    } catch (err) {
+      showError(err.message || "Something went wrong. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (isSignup) handleSignup();
@@ -319,7 +315,7 @@ useEffect(() => {
           {!isSignup && (
             <motion.div key="login-form" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.28 }}>
               <HexInput label="Email" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@hive.io" />
-              <HexInput label="Password" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••••" />
+              <HexInput label="Password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••••" showToggle />
             </motion.div>
           )}
 
@@ -336,7 +332,7 @@ useEffect(() => {
                 </div>
                 <HexInput label="Username" value={username} onChange={e => setUsername(e.target.value)} placeholder="worker_bee_42" />
                 <HexInput label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@hive.io" />
-                <HexInput label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••••" />
+                <HexInput label="Password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••••" showToggle />
               </div>
 
               {/* Section 2: Profession */}
