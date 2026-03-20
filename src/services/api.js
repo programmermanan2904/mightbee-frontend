@@ -1,19 +1,14 @@
 const BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 
-// 🔥 DEBUG
-console.log("🚀 BASE_URL:", BASE_URL);
-
 // ================= TOKEN HELPERS =================
 
 function getAccountToken() {
   const token = localStorage.getItem("mb_token");
-  console.log("🔑 Account Token:", token);
   return token && token !== "undefined" ? token : null;
 }
 
 function getProfileToken() {
   const token = localStorage.getItem("mb_profile_token");
-  console.log("🎭 Profile Token:", token);
   return token && token !== "undefined" ? token : null;
 }
 
@@ -21,9 +16,7 @@ function getProfileToken() {
 
 async function request(path, options = {}) {
   const token = getAccountToken();
-
   const finalURL = `${BASE_URL}${path}`;
-  console.log("📡 REQUEST →", finalURL);
 
   const headers = {
     "Content-Type": "application/json",
@@ -31,28 +24,15 @@ async function request(path, options = {}) {
     ...options.headers,
   };
 
-  console.log("📨 HEADERS →", headers);
-
-  const res = await fetch(finalURL, {
-    ...options,
-    headers,
-  });
-
-  console.log("📊 STATUS →", res.status);
+  const res = await fetch(finalURL, { ...options, headers });
 
   let data;
-
   try {
     const text = await res.text();
-    console.log("📦 RAW RESPONSE:", text);
-
     data = text ? JSON.parse(text) : {};
-  } catch (err) {
-    console.error("❌ JSON PARSE ERROR:", err);
+  } catch {
     data = {};
   }
-
-  console.log("📥 RESPONSE →", data);
 
   if (!res.ok) {
     throw new Error(data.message || "Request failed");
@@ -61,47 +41,29 @@ async function request(path, options = {}) {
   return data;
 }
 
-// ================= PROFILE REQUEST (FIXED) =================
+// ================= PROFILE REQUEST =================
 
 async function profileRequest(path, options = {}) {
   const accountToken = getAccountToken();
   const profileToken = getProfileToken();
-
   const finalURL = `${BASE_URL}${path}`;
-  console.log("📡 PROFILE REQUEST →", finalURL);
 
   const headers = {
     "Content-Type": "application/json",
-
-    // ✅ Send BOTH tokens correctly
     ...(accountToken && { Authorization: `Bearer ${accountToken}` }),
     ...(profileToken && { "x-profile-token": profileToken }),
-
     ...options.headers,
   };
 
-  console.log("📨 PROFILE HEADERS →", headers);
-
-  const res = await fetch(finalURL, {
-    ...options,
-    headers,
-  });
-
-  console.log("📊 PROFILE STATUS →", res.status);
+  const res = await fetch(finalURL, { ...options, headers });
 
   let data;
-
   try {
     const text = await res.text();
-    console.log("📦 PROFILE RAW RESPONSE:", text);
-
     data = text ? JSON.parse(text) : {};
-  } catch (err) {
-    console.error("❌ PROFILE JSON ERROR:", err);
+  } catch {
     data = {};
   }
-
-  console.log("📥 PROFILE RESPONSE →", data);
 
   if (!res.ok) {
     throw new Error(data.message || "Profile request failed");
@@ -114,8 +76,6 @@ async function profileRequest(path, options = {}) {
 
 export const auth = {
   login: async (email, password) => {
-    console.log("🔐 LOGIN:", email);
-
     const res = await request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
@@ -126,32 +86,24 @@ export const auth = {
     localStorage.setItem("mb_token", res.token);
     localStorage.setItem("mb_user", JSON.stringify(res.user));
 
-    console.log("✅ LOGIN SUCCESS");
-
     return res;
   },
 
   register: async (name, email, password, profession) => {
-    console.log("📝 REGISTER:", email);
-
     const res = await request("/auth/register", {
       method: "POST",
       body: JSON.stringify({ name, email, password, profession }),
     });
 
-    console.log("✅ REGISTER RESPONSE:", res);
-
     if (res.token) {
       localStorage.setItem("mb_token", res.token);
       localStorage.setItem("mb_user", JSON.stringify(res.user));
-      console.log("✅ TOKEN SAVED AFTER SIGNUP");
     }
 
     return res;
   },
 
   logout: () => {
-    console.log("🚪 LOGOUT");
     localStorage.clear();
   },
 
@@ -161,6 +113,12 @@ export const auth = {
     } catch {
       return null;
     }
+  },
+
+  // ✅ Used in Profile.jsx after updateProfile
+  saveSession: (token, user) => {
+    if (token) localStorage.setItem("mb_token", token);
+    if (user)  localStorage.setItem("mb_user", JSON.stringify(user));
   },
 
   getToken: () => getAccountToken(),
@@ -188,31 +146,20 @@ export const profiles = {
   delete: (profileId) =>
     request(`/profiles/${profileId}`, { method: "DELETE" }),
 
+  // ✅ Fixed — single token check, saves both items before returning
   select: async (profileId) => {
     const data = await request(`/profiles/${profileId}/select`, {
       method: "POST",
     });
 
-    // ✅ IMPORTANT: Ensure correct key from backend
     const profileToken = data.profileToken || data.token;
 
-if (!profileToken) {
-  console.error("❌ FULL RESPONSE:", data);
-  throw new Error("Profile token missing from backend");
-}
-
-localStorage.setItem("mb_profile_token", profileToken);
-console.log("✅ SAVED PROFILE TOKEN:", profileToken);
-
     if (!profileToken) {
-      console.error("❌ PROFILE TOKEN MISSING IN RESPONSE");
-      throw new Error("Profile token missing");
+      throw new Error("Profile token missing from backend response");
     }
 
     localStorage.setItem("mb_profile_token", profileToken);
     localStorage.setItem("mb_active_profile", JSON.stringify(data.profile));
-
-    console.log("✅ PROFILE SELECTED");
 
     return data;
   },
@@ -228,6 +175,24 @@ console.log("✅ SAVED PROFILE TOKEN:", profileToken);
   clearActive: () => {
     localStorage.removeItem("mb_profile_token");
     localStorage.removeItem("mb_active_profile");
+  },
+
+  // ✅ Used in Login.jsx and Profile.jsx — was missing entirely
+  setCached: (list) => {
+    try {
+      localStorage.setItem("mb_profiles_cache", JSON.stringify(list));
+    } catch {
+      // storage full or unavailable — fail silently
+    }
+  },
+
+  getCached: () => {
+    try {
+      const raw = localStorage.getItem("mb_profiles_cache");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
   },
 };
 
