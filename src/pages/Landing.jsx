@@ -15,7 +15,7 @@ const TONES = [
     accentBorder: "rgba(255,213,79,0.45)",
     accentGlow: "rgba(255,213,79,0.3)",
     accentGlowStrong: "rgba(255,213,79,0.55)",
-    orbColor1: "radial-gradient(circle, rgba(255,213,79,0.22) 0%, transparent 70%)",
+    orbColor1: "radial-gradient(circle, rgba(94, 80, 34, 0.22) 0%, transparent 70%)",
     orbColor2: "radial-gradient(circle, rgba(255,213,79,0.1) 0%, transparent 70%)",
     cardBar: "linear-gradient(90deg, transparent, #FFD54F, transparent)",
     statGlow: "0 0 40px rgba(255,213,79,0.35)",

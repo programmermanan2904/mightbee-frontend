@@ -7,11 +7,6 @@ function getAccountToken() {
   return token && token !== "undefined" ? token : null;
 }
 
-function getProfileToken() {
-  const token = localStorage.getItem("mb_profile_token");
-  return token && token !== "undefined" ? token : null;
-}
-
 // ================= CORE REQUEST =================
 
 async function request(path, options = {}) {
@@ -41,42 +36,11 @@ async function request(path, options = {}) {
   return data;
 }
 
-// ================= PROFILE REQUEST =================
-
-async function profileRequest(path, options = {}) {
-  const accountToken = getAccountToken();
-  const profileToken = getProfileToken();
-  const finalURL = `${BASE_URL}${path}`;
-
-  const headers = {
-    "Content-Type": "application/json",
-    ...(accountToken && { Authorization: `Bearer ${accountToken}` }),
-    ...(profileToken && { "x-profile-token": profileToken }),
-    ...options.headers,
-  };
-
-  const res = await fetch(finalURL, { ...options, headers });
-
-  let data;
-  try {
-    const text = await res.text();
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = {};
-  }
-
-  if (!res.ok) {
-    throw new Error(data.message || "Profile request failed");
-  }
-
-  return data;
-}
-
 // ================= AUTH =================
 
 export const auth = {
   login: async (email, password) => {
-    const res = await request("/auth/login", {
+    const res = await request("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
@@ -90,7 +54,7 @@ export const auth = {
   },
 
   register: async (name, email, password, profession) => {
-    const res = await request("/auth/register", {
+    const res = await request("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify({ name, email, password, profession }),
     });
@@ -115,7 +79,6 @@ export const auth = {
     }
   },
 
-  // ✅ Used in Profile.jsx after updateProfile
   saveSession: (token, user) => {
     if (token) localStorage.setItem("mb_token", token);
     if (user)  localStorage.setItem("mb_user", JSON.stringify(user));
@@ -127,63 +90,43 @@ export const auth = {
 };
 
 // ================= PROFILES =================
+// Your backend has no multi-profile system.
+// These stubs keep the frontend working by using the logged-in user directly.
 
 export const profiles = {
-  getAll: () => request("/profiles"),
-
-  create: (name, avatar, profession) =>
-    request("/profiles", {
-      method: "POST",
-      body: JSON.stringify({ name, avatar, profession }),
-    }),
-
-  update: (profileId, updates) =>
-    request(`/profiles/${profileId}`, {
-      method: "PATCH",
-      body: JSON.stringify(updates),
-    }),
-
-  delete: (profileId) =>
-    request(`/profiles/${profileId}`, { method: "DELETE" }),
-
-  // ✅ Fixed — single token check, saves both items before returning
-  select: async (profileId) => {
-    const data = await request(`/profiles/${profileId}/select`, {
-      method: "POST",
-    });
-
-    const profileToken = data.profileToken || data.token;
-
-    if (!profileToken) {
-      throw new Error("Profile token missing from backend response");
-    }
-
-    localStorage.setItem("mb_profile_token", profileToken);
-    localStorage.setItem("mb_active_profile", JSON.stringify(data.profile));
-
-    return data;
+  getAll: async () => {
+    const u = auth.getUser();
+    return { profiles: u ? [u] : [] };
   },
 
-  getActive: () => {
-    try {
-      return JSON.parse(localStorage.getItem("mb_active_profile"));
-    } catch {
-      return null;
-    }
+  create: async (name, avatar, profession) => {
+    // No-op — users are created via auth.register
+    return { profile: auth.getUser() };
   },
 
-  clearActive: () => {
-    localStorage.removeItem("mb_profile_token");
-    localStorage.removeItem("mb_active_profile");
+  update: async (profileId, updates) => {
+    // Delegate to user.updateProfile
+    return user.updateProfile(updates);
   },
 
-  // ✅ Used in Login.jsx and Profile.jsx — was missing entirely
+  delete: async () => {
+    // No-op — not supported
+    return {};
+  },
+
+  select: async () => {
+    const u = auth.getUser();
+    return { profile: u };
+  },
+
+  getActive: () => auth.getUser(),
+
+  clearActive: () => {},
+
   setCached: (list) => {
     try {
       localStorage.setItem("mb_profiles_cache", JSON.stringify(list));
-    } catch {
-      // storage full or unavailable — fail silently
-    }
+    } catch {}
   },
 
   getCached: () => {
@@ -200,26 +143,26 @@ export const profiles = {
 
 export const chat = {
   create: (tone) =>
-    profileRequest("/chats", {
+    request("/api/chats", {
       method: "POST",
       body: JSON.stringify({ tone }),
     }),
 
   sendMessage: (chatId, message, tone) =>
-    profileRequest(`/chats/${chatId}/messages`, {
+    request(`/api/chats/${chatId}/messages`, {
       method: "POST",
       body: JSON.stringify({ content: message, tone }),
     }),
 
-  getHistory: () => profileRequest("/chats"),
+  getHistory: () => request("/api/chats"),
 
-  getConversation: (id) => profileRequest(`/chats/${id}`),
+  getConversation: (id) => request(`/api/chats/${id}`),
 
   deleteConversation: (id) =>
-    profileRequest(`/chats/${id}`, { method: "DELETE" }),
+    request(`/api/chats/${id}`, { method: "DELETE" }),
 
   rename: (chatId, title) =>
-    profileRequest(`/chats/${chatId}`, {
+    request(`/api/chats/${chatId}`, {
       method: "PATCH",
       body: JSON.stringify({ title }),
     }),
@@ -228,10 +171,10 @@ export const chat = {
 // ================= USER =================
 
 export const user = {
-  getProfile: () => request("/user/me"),
+  getProfile: () => request("/api/auth/me"),
 
   updateProfile: (updates) =>
-    request("/user/profile", {
+    request("/api/user/profile", {
       method: "PATCH",
       body: JSON.stringify(updates),
     }),
