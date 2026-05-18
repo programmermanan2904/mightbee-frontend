@@ -19,14 +19,24 @@ async function request(path, options = {}) {
     ...options.headers,
   };
 
-  const res = await fetch(finalURL, { ...options, headers });
+  const res = await fetch(finalURL, {
+    ...options,
+    headers,
+  });
 
   let data;
+
   try {
     const text = await res.text();
     data = text ? JSON.parse(text) : {};
   } catch {
     data = {};
+  }
+
+  // ✅ Auto logout on expired/invalid token
+  if (res.status === 401) {
+    localStorage.removeItem("mb_token");
+    localStorage.removeItem("mb_user");
   }
 
   if (!res.ok) {
@@ -45,7 +55,9 @@ export const auth = {
       body: JSON.stringify({ email, password }),
     });
 
-    if (!res.token) throw new Error("No token received");
+    if (!res.token) {
+      throw new Error("No token received");
+    }
 
     localStorage.setItem("mb_token", res.token);
     localStorage.setItem("mb_user", JSON.stringify(res.user));
@@ -53,10 +65,16 @@ export const auth = {
     return res;
   },
 
+  // ✅ FIXED REGISTER ROUTE
   register: async (name, email, password, profession) => {
-    const res = await request("/api/auth/signup", {
+    const res = await request("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password, profession }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        profession,
+      }),
     });
 
     if (res.token) {
@@ -68,7 +86,8 @@ export const auth = {
   },
 
   logout: () => {
-    localStorage.clear();
+    localStorage.removeItem("mb_token");
+    localStorage.removeItem("mb_user");
   },
 
   getUser: () => {
@@ -80,8 +99,13 @@ export const auth = {
   },
 
   saveSession: (token, user) => {
-    if (token) localStorage.setItem("mb_token", token);
-    if (user)  localStorage.setItem("mb_user", JSON.stringify(user));
+    if (token) {
+      localStorage.setItem("mb_token", token);
+    }
+
+    if (user) {
+      localStorage.setItem("mb_user", JSON.stringify(user));
+    }
   },
 
   getToken: () => getAccountToken(),
@@ -90,33 +114,36 @@ export const auth = {
 };
 
 // ================= PROFILES =================
-// Your backend has no multi-profile system.
-// These stubs keep the frontend working by using the logged-in user directly.
 
 export const profiles = {
   getAll: async () => {
     const u = auth.getUser();
-    return { profiles: u ? [u] : [] };
+
+    return {
+      profiles: u ? [u] : [],
+    };
   },
 
-  create: async (name, avatar, profession) => {
-    // No-op — users are created via auth.register
-    return { profile: auth.getUser() };
+  create: async () => {
+    return {
+      profile: auth.getUser(),
+    };
   },
 
   update: async (profileId, updates) => {
-    // Delegate to user.updateProfile
     return user.updateProfile(updates);
   },
 
   delete: async () => {
-    // No-op — not supported
     return {};
   },
 
   select: async () => {
     const u = auth.getUser();
-    return { profile: u };
+
+    return {
+      profile: u,
+    };
   },
 
   getActive: () => auth.getUser(),
@@ -125,7 +152,10 @@ export const profiles = {
 
   setCached: (list) => {
     try {
-      localStorage.setItem("mb_profiles_cache", JSON.stringify(list));
+      localStorage.setItem(
+        "mb_profiles_cache",
+        JSON.stringify(list)
+      );
     } catch {}
   },
 
@@ -151,15 +181,21 @@ export const chat = {
   sendMessage: (chatId, message, tone) =>
     request(`/api/chats/${chatId}/messages`, {
       method: "POST",
-      body: JSON.stringify({ content: message, tone }),
+      body: JSON.stringify({
+        content: message,
+        tone,
+      }),
     }),
 
   getHistory: () => request("/api/chats"),
 
-  getConversation: (id) => request(`/api/chats/${id}`),
+  getConversation: (id) =>
+    request(`/api/chats/${id}`),
 
   deleteConversation: (id) =>
-    request(`/api/chats/${id}`, { method: "DELETE" }),
+    request(`/api/chats/${id}`, {
+      method: "DELETE",
+    }),
 
   rename: (chatId, title) =>
     request(`/api/chats/${chatId}`, {
